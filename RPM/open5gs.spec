@@ -1,7 +1,7 @@
 %global _build_id_links none
 
 %define autorelease(e:s:pb:n) %{?-p:0.}%{lua:
-    release_number = 1;
+    release_number = 2;
     base_release_number = tonumber(rpm.expand("%{?-b*}%{!?-b:1}"));
     print(release_number + base_release_number - 1);
 }%{?-e:.%{-e*}}%{?-s:.%{-s*}}%{!?-n:%{?dist}}
@@ -9,7 +9,7 @@
 %global _hardened_build 1
 %define customversion .ringer
 
-Name:           open5g
+Name:           open5gs
 Version:        2.7.6
 Release:        %autorelease%{?customversion}
 Summary:        Open Source Core Network for 5G
@@ -591,6 +591,8 @@ fi
 %{_unitdir}/open5gs-upfd.service
 
 %changelog
+* Thu Feb 12 2025 Keith Milner <kamilner@sslconsult.com> - 2.7.6-2
+- Adds debugging for SMF and small fix for AMBR setting
 * Thu Sep 18 2025 Keith Milner <kamilner@sslconsult.com> - 2.7.6-1
 - Initial RPM packaging for Open5GS
 - Restructured to build individual packages for each service
