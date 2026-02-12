@@ -16,7 +16,7 @@ Summary:        Open Source Core Network for 5G
 
 License:        AGPL-3.0-or-later
 URL:            https://open5gs.org
-Source0:        https://github.com/open5gs/open5gs/archive/refs/tags/v%{version}.tar.gz#/open5gs-v%{version}.tar.gz
+Source0:        https://github.com/open5gs/open5gs/archive/refs/tags/v%{version}.tar.gz#/open5gs-%{version}.tar.gz
 
 BuildRequires:  gcc
 BuildRequires:  gcc-c++
