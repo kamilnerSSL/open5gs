@@ -591,7 +591,7 @@ fi
 %{_unitdir}/open5gs-upfd.service
 
 %changelog
-* Thu Feb 12 2025 Keith Milner <kamilner@sslconsult.com> - 2.7.6-2
+* Thu Feb 12 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-2
 - Adds debugging for SMF and small fix for AMBR setting
 * Thu Sep 18 2025 Keith Milner <kamilner@sslconsult.com> - 2.7.6-1
 - Initial RPM packaging for Open5GS
