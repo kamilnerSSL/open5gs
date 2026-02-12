@@ -9,8 +9,8 @@
 %global _hardened_build 1
 %define customversion .ringer
 
-Name:           open5gs
-Version:        2.7..7
+Name:           open5g
+Version:        2.7.6
 Release:        %autorelease%{?customversion}
 Summary:        Open Source Core Network for 5G
 
