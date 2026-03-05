@@ -2562,26 +2562,24 @@ ogs_pfcp_subnet_t *ogs_pfcp_find_subnet_by_dnn(int family, const char *dnn)
     ogs_list_for_each(&self.subnet_list, subnet) {
         if ((subnet->family == AF_UNSPEC || subnet->family == family) &&
             (strlen(subnet->dnn) == 0 ||
-             (strlen(subnet->dnn) && ogs_strcasecmp(subnet->dnn, dnn) == 0))) {
+             (strlen(subnet->dnn) && !ogs_strcasecmp(subnet->dnn, dnn)))) {
             if (subnet->pool.avail)
-                break;
+                return subnet;
         }
     }
 
-    if (subnet)
-        return subnet;
-
+    /* If not found in primary DNN, check the accepted list */
     ogs_list_for_each(&self.subnet_list, subnet) {
         if (subnet->family == AF_UNSPEC || subnet->family == family) {
             int i;
             for (i = 0; i < subnet->num_of_accept; i++) {
-                if (ogs_strcasecmp(subnet->accept[i], dnn) == 0 && subnet->pool.avail)
+                if (!ogs_strcasecmp(subnet->accept[i], dnn) && subnet->pool.avail)
                     return subnet;
             }
         }
     }
 
-    return subnet;
+    return NULL;
 }
 
 void ogs_pfcp_pool_init(ogs_pfcp_sess_t *sess)
