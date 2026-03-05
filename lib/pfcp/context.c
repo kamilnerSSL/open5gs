@@ -2562,19 +2562,23 @@ ogs_pfcp_subnet_t *ogs_pfcp_find_subnet_by_dnn(int family, const char *dnn)
     ogs_list_for_each(&self.subnet_list, subnet) {
         if ((subnet->family == AF_UNSPEC || subnet->family == family) &&
             (strlen(subnet->dnn) == 0 ||
-                (strlen(subnet->dnn) && ogs_strcasecmp(subnet->dnn, dnn) == 0))) {
+             (strlen(subnet->dnn) && ogs_strcasecmp(subnet->dnn, dnn) == 0))) {
             if (subnet->pool.avail)
                 break;
         }
     }
 
-    if (subnet) return subnet;
+    if (subnet)
+        return subnet;
 
     ogs_list_for_each(&self.subnet_list, subnet) {
-        if ((subnet->family == AF_UNSPEC || subnet->family == family) &&
-                (strlen(subnet->dnn) && ogs_strcasecmp(subnet->dnn, dnn) == 0) &&
-            subnet->pool.avail)
-            break;
+        if (subnet->family == AF_UNSPEC || subnet->family == family) {
+            int i;
+            for (i = 0; i < subnet->num_of_accept; i++) {
+                if (ogs_strcasecmp(subnet->accept[i], dnn) == 0 && subnet->pool.avail)
+                    return subnet;
+            }
+        }
     }
 
     return subnet;
