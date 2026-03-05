@@ -838,6 +838,29 @@ int ogs_pfcp_context_parse_config(const char *local, const char *remote)
                                     ogs_yaml_iter_type(&range_iter) ==
                                     YAML_SEQUENCE_NODE);
                             } else
+                                if (!strcmp(subnet_key, "accept")) {
+                                ogs_yaml_iter_t accept_iter;
+                                ogs_yaml_iter_recurse(
+                                        &subnet_iter, &accept_iter);
+                                ogs_assert(ogs_yaml_iter_type(&accept_iter) !=
+                                    YAML_MAPPING_NODE);
+                                do {
+                                    const char *v = NULL;
+
+                                    if (ogs_yaml_iter_type(&accept_iter) ==
+                                            YAML_SEQUENCE_NODE) {
+                                        if (!ogs_yaml_iter_next(&accept_iter))
+                                            break;
+                                    }
+
+                                    v = ogs_yaml_iter_value(&accept_iter);
+                                    if (v) {
+                                        subnet->accept[subnet->num_of_accept++] = v;
+                                    }
+                                } while (
+                                    ogs_yaml_iter_type(&accept_iter) ==
+                                    YAML_SEQUENCE_NODE);
+                            } else
                                 ogs_warn("unknown key `%s`", subnet_key);
                         }
 
@@ -2539,7 +2562,17 @@ ogs_pfcp_subnet_t *ogs_pfcp_find_subnet_by_dnn(int family, const char *dnn)
     ogs_list_for_each(&self.subnet_list, subnet) {
         if ((subnet->family == AF_UNSPEC || subnet->family == family) &&
             (strlen(subnet->dnn) == 0 ||
-                (strlen(subnet->dnn) && ogs_strcasecmp(subnet->dnn, dnn) == 0)) &&
+                (strlen(subnet->dnn) && ogs_strcasecmp(subnet->dnn, dnn) == 0))) {
+            if (subnet->pool.avail)
+                break;
+        }
+    }
+
+    if (subnet) return subnet;
+
+    ogs_list_for_each(&self.subnet_list, subnet) {
+        if ((subnet->family == AF_UNSPEC || subnet->family == family) &&
+                (strlen(subnet->dnn) && ogs_strcasecmp(subnet->dnn, dnn) == 0) &&
             subnet->pool.avail)
             break;
     }

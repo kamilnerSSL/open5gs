@@ -368,6 +368,10 @@ typedef struct ogs_pfcp_subnet_s {
     ogs_ipsubnet_t  gw;                     /* Gateway : 2001:db8:cafe::1 */
     char            dnn[OGS_MAX_DNN_LEN+1]; /* DNN : "internet", "volte", .. */
 
+#define OGS_MAX_NUM_OF_ACCEPTED_DNN 16
+    const char*     accept[OGS_MAX_NUM_OF_ACCEPTED_DNN];
+    int             num_of_accept;
+
 #define OGS_MAX_NUM_OF_SUBNET_RANGE 16
     struct {
         const char *low;

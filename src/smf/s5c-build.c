@@ -112,6 +112,11 @@ ogs_pkbuf_t *smf_s5c_build_create_session_response(
         ogs_assert_if_reached();
     rsp->pdn_address_allocation.presence = 1;
 
+    /* APN */
+    rsp->apn.presence = 1;
+    rsp->apn.data = (uint8_t *)sess->session.name;
+    rsp->apn.len = strlen(sess->session.name);
+
     /* APN Restriction */
     switch (sess->gtp_rat_type) {
     case OGS_GTP2_RAT_TYPE_EUTRAN:
