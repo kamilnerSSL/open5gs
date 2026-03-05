@@ -763,6 +763,9 @@ int ogs_pfcp_context_parse_config(const char *local, const char *remote)
                         const char *dev = self.tun_ifname;
                         const char *low[OGS_MAX_NUM_OF_SUBNET_RANGE];
                         const char *high[OGS_MAX_NUM_OF_SUBNET_RANGE];
+                        const char* accept[OGS_MAX_NUM_OF_ACCEPTED_DNN];
+                        int num_of_accept = 0;
+
                         int i, num = 0;
 
                         memset(low, 0, sizeof(low));
@@ -837,25 +840,25 @@ int ogs_pfcp_context_parse_config(const char *local, const char *remote)
                                 } while (
                                     ogs_yaml_iter_type(&range_iter) ==
                                     YAML_SEQUENCE_NODE);
-                            } else
-                                if (!strcmp(subnet_key, "accept")) {
+                            } else if (!strcmp(subnet_key, "accept")) {
                                 ogs_yaml_iter_t accept_iter;
                                 ogs_yaml_iter_recurse(
                                         &subnet_iter, &accept_iter);
                                 ogs_assert(ogs_yaml_iter_type(&accept_iter) !=
                                     YAML_MAPPING_NODE);
                                 do {
-                                    const char *v = NULL;
-
                                     if (ogs_yaml_iter_type(&accept_iter) ==
                                             YAML_SEQUENCE_NODE) {
                                         if (!ogs_yaml_iter_next(&accept_iter))
                                             break;
                                     }
 
-                                    v = ogs_yaml_iter_value(&accept_iter);
-                                    if (v) {
-                                        subnet->accept[subnet->num_of_accept++] = v;
+                                    const char *v =
+                                        ogs_yaml_iter_value(&accept_iter);
+                                    if (v && num_of_accept < OGS_MAX_NUM_OF_ACCEPTED_DNN) {
+                                        accept[num_of_accept++] = v;
+                                    } else if (v) {
+                                        ogs_warn("Exceeded maximum number of accepted DNNs");
                                     }
                                 } while (
                                     ogs_yaml_iter_type(&accept_iter) ==
@@ -872,6 +875,11 @@ int ogs_pfcp_context_parse_config(const char *local, const char *remote)
                         for (i = 0; i < subnet->num_of_range; i++) {
                             subnet->range[i].low = low[i];
                             subnet->range[i].high = high[i];
+                        }
+
+                        subnet->num_of_accept = num_of_accept;
+                        for (i = 0; i < subnet->num_of_accept; i++) {
+                            subnet->accept[i] = accept[i];
                         }
 
                     } while (ogs_yaml_iter_type(&subnet_array) ==
