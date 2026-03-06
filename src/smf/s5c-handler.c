@@ -267,6 +267,12 @@ uint8_t smf_s5c_handle_create_session_request(
         return OGS_GTP2_CAUSE_SYSTEM_FAILURE;
     }
 
+    /*
+     * If the APN was sanitized, the matched subnet will have the
+     * canonical DNN. Let's update the session with it.
+     */
+    ogs_cpystrn(sess->session.name, sess->pfcp_node->dnn, sizeof(sess->session.name));
+
     /* Check if selected PGW is associated with SMF */
     if (!OGS_FSM_CHECK(&sess->pfcp_node->sm, smf_pfcp_state_associated)) {
         ogs_error("[%s:%s] selected UPF is not assocated with SMF",

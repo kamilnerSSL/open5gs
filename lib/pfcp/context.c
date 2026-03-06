@@ -2570,8 +2570,8 @@ ogs_pfcp_subnet_t *ogs_pfcp_find_subnet_by_dnn(int family, const char *dnn)
     ogs_list_for_each(&self.subnet_list, subnet) {
         if ((subnet->family == AF_UNSPEC || subnet->family == family) &&
             (strlen(subnet->dnn) == 0 ||
-             (strlen(subnet->dnn) && !ogs_strcasecmp(subnet->dnn, dnn)))) {
-            if (subnet->pool.avail)
+             (strlen(subnet->dnn) && !ogs_strcasecmp(subnet->dnn, dnn))) &&
+            subnet->pool.avail) {
                 return subnet;
         }
     }
