@@ -271,7 +271,7 @@ uint8_t smf_s5c_handle_create_session_request(
      * If the APN was sanitized, the matched subnet will have the
      * canonical DNN. Let's update the session with it.
      */
-    ogs_cpystrn(sess->session.name, sess->pfcp_node->dnn, sizeof(sess->session.name));
+    ogs_cpystrn(sess->session.name, sess->pfcp_subnet->dnn, sizeof(sess->session.name));
 
     /* Check if selected PGW is associated with SMF */
     if (!OGS_FSM_CHECK(&sess->pfcp_node->sm, smf_pfcp_state_associated)) {
