@@ -260,28 +260,6 @@ uint8_t smf_s5c_handle_create_session_request(
     /* Serving Network */
     ogs_nas_to_plmn_id(&sess->serving_plmn_id, req->serving_network.data);
 
-    /* Select PGW based on UE Location Information */
-    smf_sess_select_upf(sess);
-
-    if (!sess->pfcp_node) {
-        ogs_error("[%s:%s] No UPF available for session",
-                  smf_ue->imsi_bcd, sess->session.name);
-        return OGS_GTP2_CAUSE_SYSTEM_FAILURE;
-    }
-
-    /*
-     * If the APN was sanitized, the matched subnet will have the
-     * canonical DNN. Let's update the session with it.
-     */
-    ogs_cpystrn(sess->session.name, sess->pfcp_subnet->dnn, sizeof(sess->session.name));
-
-    /* Check if selected PGW is associated with SMF */
-    if (!OGS_FSM_CHECK(&sess->pfcp_node->sm, smf_pfcp_state_associated)) {
-        ogs_error("[%s:%s] selected UPF is not assocated with SMF",
-                  smf_ue->imsi_bcd, sess->session.name);
-        return OGS_GTP2_CAUSE_REMOTE_PEER_NOT_RESPONDING;
-    }
-
     /* UE IP Address */
     paa = req->pdn_address_allocation.data;
     ogs_assert(paa);
@@ -294,27 +272,46 @@ uint8_t smf_s5c_handle_create_session_request(
     rv = ogs_paa_to_ip(paa, &sess->session.ue_ip);
     ogs_assert(rv == OGS_OK);
 
+    /*
+     * If the APN was sanitized, the matched subnet will have the
+     * canonical DNN. Let's update the session with it.
+     */
+    if (strcmp(original_apn, sess->pfcp_subnet->dnn) != 0) {
+        ogs_info("APN sanitization complete: original [%s], sanitized [%s]",
+                 original_apn, sess->pfcp_subnet->dnn);
+    }
+
+    /* Select PGW based on UE Location Information and sanitized APN */
+    smf_sess_select_upf(sess);
+
+    if (!sess->pfcp_node) {
+        ogs_error("[%s:%s] No UPF available for session",
+                  smf_ue->imsi_bcd, sess->session.name);
+        return OGS_GTP2_CAUSE_SYSTEM_FAILURE;
+    }
+
+    /* Check if selected PGW is associated with SMF */
+    if (!OGS_FSM_CHECK(&sess->pfcp_node->sm, smf_pfcp_state_associated)) {
+        ogs_error("[%s:%s] selected UPF is not assocated with SMF",
+                  smf_ue->imsi_bcd, sess->session.name);
+        return OGS_GTP2_CAUSE_REMOTE_PEER_NOT_RESPONDING;
+    }
+
     /* Set UE IP Address */
     rv = smf_sess_set_ue_ip(sess);
     if (rv != OGS_PFCP_CAUSE_REQUEST_ACCEPTED) {
-        /* only two possibilities are:
-         * OGS_PFCP_CAUSE_ALL_DYNAMIC_ADDRESS_ARE_OCCUPIED
-         * OGS_PFCP_CAUSE_NO_RESOURCES_AVAILABLE
-         */
-        ogs_error("Failed to set UE IP Address");
+        ogs_error("Failed to set UE IP Address, cause: %d", rv);
         switch(rv) {
         case OGS_PFCP_CAUSE_ALL_DYNAMIC_ADDRESS_ARE_OCCUPIED:
-            cause_value = OGS_GTP2_CAUSE_ALL_DYNAMIC_ADDRESSES_ARE_OCCUPIED;
-            break;
+            return OGS_GTP2_CAUSE_ALL_DYNAMIC_ADDRESSES_ARE_OCCUPIED;
         case OGS_PFCP_CAUSE_NO_RESOURCES_AVAILABLE:
-            cause_value = OGS_GTP2_CAUSE_NO_RESOURCES_AVAILABLE;
-            break;
+            return OGS_GTP2_CAUSE_NO_RESOURCES_AVAILABLE;
         default:
-            cause_value = OGS_GTP2_CAUSE_REQUEST_REJECTED_REASON_NOT_SPECIFIED;
-            break;
+            return OGS_GTP2_CAUSE_REQUEST_REJECTED_REASON_NOT_SPECIFIED;
         }
-        return cause_value;
     }
+
+    ogs_cpystrn(sess->session.name, sess->pfcp_subnet->dnn, sizeof(sess->session.name));
 
     ogs_info("UE IMSI[%s] APN[%s] IPv4[%s] IPv6[%s]",
         smf_ue->imsi_bcd,
