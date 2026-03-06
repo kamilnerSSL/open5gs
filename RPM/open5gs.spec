@@ -1,7 +1,7 @@
 %global _build_id_links none
 
 %define autorelease(e:s:pb:n) %{?-p:0.}%{lua:
-    release_number = 7;
+    release_number = 8;
     base_release_number = tonumber(rpm.expand("%{?-b*}%{!?-b:1}"));
     print(release_number + base_release_number - 1);
 }%{?-e:.%{-e*}}%{?-s:.%{-s*}}%{!?-n:%{?dist}}
@@ -591,6 +591,8 @@ fi
 %{_unitdir}/open5gs-upfd.service
 
 %changelog
+* Fri Mar 06 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-8
+- Fixes encoding of replacement APN & some logging message changes
 * Fri Mar 06 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-7
 - Merge in upstream changes and fix dnn replacement
 * Fri Mar 06 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-6
