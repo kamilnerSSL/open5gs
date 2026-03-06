@@ -2052,7 +2052,11 @@ static ogs_sbi_client_t *nf_instance_find_client(
                 return NULL;
             }
         }
-    }
+    } else
+        ogs_error("[%s] No instance-level endpoint, "
+                "client association skipped [id:%s]",
+                OpenAPI_nf_type_ToString(nf_instance->nf_type),
+                nf_instance->id);
 
     return client;
 }
@@ -2096,12 +2100,16 @@ static void nf_service_associate_client(ogs_sbi_nf_service_t *nf_service)
                 return;
             }
         }
-    }
+    } else
+        ogs_error("[%s] No service-level endpoint, "
+                "client association skipped [id:%s]",
+                nf_service->name, nf_service->id);
 
-    ogs_debug("[%s] NFService associated [%s]",
-            nf_service->name, nf_service->id);
-    if (client)
+    if (client) {
+        ogs_info("[%s] NFService associated [%s]",
+                nf_service->name, nf_service->id);
         OGS_SBI_SETUP_CLIENT(nf_service, client);
+    }
 }
 
 static void nf_service_associate_client_all(ogs_sbi_nf_instance_t *nf_instance)
@@ -2429,16 +2437,35 @@ void ogs_sbi_client_associate(ogs_sbi_nf_instance_t *nf_instance)
     ogs_assert(nf_instance);
 
     client = nf_instance_find_client(nf_instance);
-    ogs_assert(client);
+    if (client) {
+        ogs_info("[%s] NFInstance associated [%s]",
+                nf_instance->nf_type ?
+                    OpenAPI_nf_type_ToString(nf_instance->nf_type) : "NULL",
+                nf_instance->id);
 
-    ogs_debug("[%s] NFInstance associated [%s]",
-            nf_instance->nf_type ?
-                OpenAPI_nf_type_ToString(nf_instance->nf_type) : "NULL",
-            nf_instance->id);
-
-    OGS_SBI_SETUP_CLIENT(nf_instance, client);
+        OGS_SBI_SETUP_CLIENT(nf_instance, client);
+    }
 
     nf_service_associate_client_all(nf_instance);
+}
+
+bool nf_instance_has_usable_client(ogs_sbi_nf_instance_t *nf_instance)
+{
+    ogs_sbi_nf_service_t *nf_service = NULL;
+
+    ogs_assert(nf_instance);
+
+    /* Instance-level client */
+    if (NF_INSTANCE_CLIENT(nf_instance))
+        return true;
+
+    /* Service-level clients */
+    ogs_list_for_each(&nf_instance->nf_service_list, nf_service) {
+        if (nf_service->client)
+            return true;
+    }
+
+    return false;
 }
 
 int ogs_sbi_default_client_port(OpenAPI_uri_scheme_e scheme)
@@ -2644,6 +2671,16 @@ void ogs_sbi_xact_remove(ogs_sbi_xact_t *xact)
 
     if (xact->target_apiroot)
         ogs_free(xact->target_apiroot);
+
+    /*
+     * Release optional user context attached to the transaction.
+     * The transaction owns this memory and is responsible for
+     * freeing it when the transaction is destroyed.
+     */
+    if (xact->user_data) {
+        if (xact->user_data_free)
+            xact->user_data_free(xact->user_data);
+    }
 
     ogs_list_remove(&sbi_object->xact_list, xact);
     ogs_pool_id_free(&xact_pool, xact);
