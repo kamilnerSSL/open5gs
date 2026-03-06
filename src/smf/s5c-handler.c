@@ -95,6 +95,7 @@ uint8_t smf_s5c_handle_create_session_request(
     char buf1[OGS_ADDRSTRLEN];
     char buf2[OGS_ADDRSTRLEN];
 
+    char original_apn[OGS_MAX_APN_LEN + 1] = {0};
     int i, rv;
     uint8_t cause_value = 0;
 
@@ -113,6 +114,7 @@ uint8_t smf_s5c_handle_create_session_request(
     ogs_assert(xact);
     ogs_assert(req);
 
+    ogs_cpystrn(original_apn, sess->session.name, sizeof(original_apn));
     ogs_debug("Create Session Request");
 
     cause_value = OGS_GTP2_CAUSE_REQUEST_ACCEPTED;
