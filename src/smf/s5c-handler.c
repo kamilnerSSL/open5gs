@@ -273,6 +273,20 @@ uint8_t smf_s5c_handle_create_session_request(
     rv = ogs_paa_to_ip(paa, &sess->session.ue_ip);
     ogs_assert(rv == OGS_OK);
 
+    /* Set UE IP Address */
+    rv = smf_sess_set_ue_ip(sess);
+    if (rv != OGS_PFCP_CAUSE_REQUEST_ACCEPTED) {
+        ogs_error("Failed to set UE IP Address, cause: %d", rv);
+        switch(rv) {
+        case OGS_PFCP_CAUSE_ALL_DYNAMIC_ADDRESS_ARE_OCCUPIED:
+            return OGS_GTP2_CAUSE_ALL_DYNAMIC_ADDRESSES_ARE_OCCUPIED;
+        case OGS_PFCP_CAUSE_NO_RESOURCES_AVAILABLE:
+            return OGS_GTP2_CAUSE_NO_RESOURCES_AVAILABLE;
+        default:
+            return OGS_GTP2_CAUSE_REQUEST_REJECTED_REASON_NOT_SPECIFIED;
+        }
+    }
+
     /*
      * If the APN was sanitized, the matched subnet will have the
      * canonical DNN. Let's update the session with it.
@@ -281,6 +295,7 @@ uint8_t smf_s5c_handle_create_session_request(
         ogs_info("APN sanitization complete: original [%s], sanitized [%s]",
                  original_apn, sess->pfcp_subnet->dnn);
     }
+    ogs_cpystrn(sess->session.name, sess->pfcp_subnet->dnn, sizeof(sess->session.name));
 
     /* Select PGW based on UE Location Information and sanitized APN */
     smf_sess_select_upf(sess);
@@ -297,22 +312,6 @@ uint8_t smf_s5c_handle_create_session_request(
                   smf_ue->imsi_bcd, sess->session.name);
         return OGS_GTP2_CAUSE_REMOTE_PEER_NOT_RESPONDING;
     }
-
-    /* Set UE IP Address */
-    rv = smf_sess_set_ue_ip(sess);
-    if (rv != OGS_PFCP_CAUSE_REQUEST_ACCEPTED) {
-        ogs_error("Failed to set UE IP Address, cause: %d", rv);
-        switch(rv) {
-        case OGS_PFCP_CAUSE_ALL_DYNAMIC_ADDRESS_ARE_OCCUPIED:
-            return OGS_GTP2_CAUSE_ALL_DYNAMIC_ADDRESSES_ARE_OCCUPIED;
-        case OGS_PFCP_CAUSE_NO_RESOURCES_AVAILABLE:
-            return OGS_GTP2_CAUSE_NO_RESOURCES_AVAILABLE;
-        default:
-            return OGS_GTP2_CAUSE_REQUEST_REJECTED_REASON_NOT_SPECIFIED;
-        }
-    }
-
-    ogs_cpystrn(sess->session.name, sess->pfcp_subnet->dnn, sizeof(sess->session.name));
 
     ogs_info("UE IMSI[%s] APN[%s] IPv4[%s] IPv6[%s]",
         smf_ue->imsi_bcd,
