@@ -2588,7 +2588,7 @@ ogs_pfcp_subnet_t *ogs_pfcp_find_subnet_by_dnn(int family, const char *dnn)
             int i;
             for (i = 0; i < subnet->num_of_accept; i++) {
                 if (!ogs_strcasecmp(subnet->accept[i], dnn) && subnet->pool.avail) {
-                    ogs_info("Sanitizing APN [%s] to DNN [%s]", dnn, subnet->dnn);
+                    ogs_info("Replacing APN [%s] with DNN [%s]", dnn, subnet->dnn);
                     return subnet;
                 }
             }

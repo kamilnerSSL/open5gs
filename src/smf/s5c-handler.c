@@ -288,16 +288,16 @@ uint8_t smf_s5c_handle_create_session_request(
     }
 
     /*
-     * If the APN was sanitized, the matched subnet will have the
+     * If the APN was replaced, the matched subnet will have the
      * canonical DNN. Let's update the session with it.
      */
     if (strcmp(original_apn, sess->pfcp_subnet->dnn) != 0) {
-        ogs_info("APN sanitization complete: original [%s], sanitized [%s]",
+        ogs_info("APN replacement complete: original [%s], replacement [%s]",
                  original_apn, sess->pfcp_subnet->dnn);
     }
     ogs_cpystrn(sess->session.name, sess->pfcp_subnet->dnn, sizeof(sess->session.name));
 
-    /* Select PGW based on UE Location Information and sanitized APN */
+    /* Select PGW based on UE Location Information and replacement APN */
     smf_sess_select_upf(sess);
 
     if (!sess->pfcp_node) {
