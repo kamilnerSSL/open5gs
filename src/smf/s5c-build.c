@@ -113,9 +113,9 @@ ogs_pkbuf_t *smf_s5c_build_create_session_response(
     rsp->pdn_address_allocation.presence = 1;
 
     /* APN */
-    rsp->apn.presence = 1;
-    rsp->apn.data = (uint8_t *)sess->session.name;
-    rsp->apn.len = strlen(sess->session.name);
+    rsp->apn.len = ogs_fqdn_build(rsp->apn.data, sess->session.name, strlen(sess->session.name));
+    if (rsp->apn.len > 0)
+        rsp->apn.presence = 1;
 
     /* APN Restriction */
     switch (sess->gtp_rat_type) {
