@@ -295,9 +295,15 @@ uint8_t smf_s5c_handle_create_session_request(
         ogs_info("APN replacement complete: original [%s], replacement [%s]",
                  original_apn, sess->pfcp_subnet->dnn);
     }
-    ogs_cpystrn(sess->session.name, sess->pfcp_subnet->dnn, sizeof(sess->session.name));
 
-    /* Select PGW based on UE Location Information and replacement APN */
+    /* Check if selected UPF is associated with SMF */
+    if (!OGS_FSM_CHECK(&sess->pfcp_node->sm, smf_pfcp_state_associated)) {
+        ogs_error("[%s:%s] selected UPF is not assocated with SMF",
+                  smf_ue->imsi_bcd, sess->session.name);
+        return OGS_GTP2_CAUSE_REMOTE_PEER_NOT_RESPONDING;
+    }
+
+    /* Select UPF based on UE Location Information and replacement APN */
     smf_sess_select_upf(sess);
 
     if (!sess->pfcp_node) {
@@ -305,13 +311,7 @@ uint8_t smf_s5c_handle_create_session_request(
                   smf_ue->imsi_bcd, sess->session.name);
         return OGS_GTP2_CAUSE_SYSTEM_FAILURE;
     }
-
-    /* Check if selected PGW is associated with SMF */
-    if (!OGS_FSM_CHECK(&sess->pfcp_node->sm, smf_pfcp_state_associated)) {
-        ogs_error("[%s:%s] selected UPF is not assocated with SMF",
-                  smf_ue->imsi_bcd, sess->session.name);
-        return OGS_GTP2_CAUSE_REMOTE_PEER_NOT_RESPONDING;
-    }
+    ogs_cpystrn(sess->session.name, sess->pfcp_subnet->dnn, sizeof(sess->session.name));
 
     ogs_info("UE IMSI[%s] APN[%s] IPv4[%s] IPv6[%s]",
         smf_ue->imsi_bcd,
