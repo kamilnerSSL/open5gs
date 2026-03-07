@@ -288,12 +288,21 @@ uint8_t smf_s5c_handle_create_session_request(
     }
 
     /*
-     * If the APN was replaced, the matched subnet will have the
+     * If the DNN was replaced, the matched subnet will have the
      * canonical DNN. Let's update the session with it.
      */
     if (strcmp(original_apn, sess->pfcp_subnet->dnn) != 0) {
-        ogs_info("APN replacement complete: original [%s], replacement [%s]",
+        ogs_info("DNN replacement complete: original [%s], replacement [%s]",
                  original_apn, sess->pfcp_subnet->dnn);
+    }
+
+    /* Select UPF based on UE Location Information and original APN */
+    smf_sess_select_upf(sess);
+
+    if (!sess->pfcp_node) {
+        ogs_error("[%s:%s] No UPF available for session",
+                  smf_ue->imsi_bcd, sess->session.name);
+        return OGS_GTP2_CAUSE_SYSTEM_FAILURE;
     }
 
     /* Check if selected UPF is associated with SMF */
@@ -301,15 +310,6 @@ uint8_t smf_s5c_handle_create_session_request(
         ogs_error("[%s:%s] selected UPF is not assocated with SMF",
                   smf_ue->imsi_bcd, sess->session.name);
         return OGS_GTP2_CAUSE_REMOTE_PEER_NOT_RESPONDING;
-    }
-
-    /* Select UPF based on UE Location Information and replacement APN */
-    smf_sess_select_upf(sess);
-
-    if (!sess->pfcp_node) {
-        ogs_error("[%s:%s] No UPF available for session",
-                  smf_ue->imsi_bcd, sess->session.name);
-        return OGS_GTP2_CAUSE_SYSTEM_FAILURE;
     }
     ogs_cpystrn(sess->session.name, sess->pfcp_subnet->dnn, sizeof(sess->session.name));
 
