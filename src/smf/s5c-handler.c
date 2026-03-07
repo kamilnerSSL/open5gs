@@ -292,8 +292,11 @@ uint8_t smf_s5c_handle_create_session_request(
      * canonical DNN. Let's update the session with it.
      */
     if (strcmp(original_apn, sess->pfcp_subnet->dnn) != 0) {
-        ogs_info("DNN replacement complete: original [%s], replacement [%s]",
+                ogs_info("DNN replacement: original [%s], new [%s]",
                  original_apn, sess->pfcp_subnet->dnn);
+        ogs_free(sess->session.name);
+        sess->session.name = ogs_strdup(sess->pfcp_subnet->dnn);
+        ogs_assert(sess->session.name);
     }
 
     /* Select UPF based on UE Location Information and original APN */

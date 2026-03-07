@@ -47,6 +47,7 @@ ogs_pkbuf_t *smf_s5c_build_create_session_response(
     int len;
     uint8_t pco_buf[OGS_MAX_PCO_LEN];
     int16_t pco_len;
+    char apn_buf[OGS_MAX_APN_LEN + 1];
     uint8_t apco_buf[OGS_MAX_PCO_LEN];
     int16_t apco_len;
     uint8_t *epco_buf = NULL;
@@ -113,9 +114,11 @@ ogs_pkbuf_t *smf_s5c_build_create_session_response(
     rsp->pdn_address_allocation.presence = 1;
 
     /* APN */
-    rsp->apn.len = ogs_fqdn_build(rsp->apn.data, sess->session.name, strlen(sess->session.name));
-    if (rsp->apn.len > 0)
+    rsp->apn.len = ogs_fqdn_build(apn_buf, sess->session.name, strlen(sess->session.name));
+    if (rsp->apn.len > 0) {
         rsp->apn.presence = 1;
+        rsp->apn.data = apn_buf;
+    }
 
     /* APN Restriction */
     switch (sess->gtp_rat_type) {
