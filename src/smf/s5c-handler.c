@@ -155,11 +155,7 @@ uint8_t smf_s5c_handle_create_session_request(
                 req->serving_network.len);
         cause_value = OGS_GTP2_CAUSE_CONDITIONAL_IE_MISSING;
     }
-
-    if (!ogs_diam_is_relay_or_app_advertised(OGS_DIAM_GX_APPLICATION_ID)) {
-        ogs_error("No Gx Diameter Peer");
-        cause_value = OGS_GTP2_CAUSE_REMOTE_PEER_NOT_RESPONDING;
-    }
+    
     switch (sess->gtp_rat_type) {
     case OGS_GTP2_RAT_TYPE_EUTRAN:
         if (req->bearer_contexts_to_be_created[0].
@@ -307,6 +303,14 @@ uint8_t smf_s5c_handle_create_session_request(
             break;
         }
         return cause_value;
+    }
+
+    /* Gx peer must be available before the session can proceed further.
+     * This check is placed after DNN/subnet resolution so that unit
+     * tests can be performed without a live Diameter peer. */
+    if (!ogs_diam_is_relay_or_app_advertised(OGS_DIAM_GX_APPLICATION_ID)) {
+        ogs_error("No Gx Diameter Peer");
+        return OGS_GTP2_CAUSE_REMOTE_PEER_NOT_RESPONDING;
     }
 
     ogs_info("UE IMSI[%s] APN[%s] IPv4[%s] IPv6[%s]",
