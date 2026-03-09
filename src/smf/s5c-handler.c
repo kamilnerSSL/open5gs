@@ -158,10 +158,6 @@ uint8_t smf_s5c_handle_create_session_request(
         cause_value = OGS_GTP2_CAUSE_CONDITIONAL_IE_MISSING;
     }
 
-    if (!ogs_diam_is_relay_or_app_advertised(OGS_DIAM_GX_APPLICATION_ID)) {
-        ogs_error("No Gx Diameter Peer");
-        cause_value = OGS_GTP2_CAUSE_REMOTE_PEER_NOT_RESPONDING;
-    }
     switch (sess->gtp_rat_type) {
     case OGS_GTP2_RAT_TYPE_EUTRAN:
         if (req->bearer_contexts_to_be_created[0].
@@ -290,13 +286,25 @@ uint8_t smf_s5c_handle_create_session_request(
     /*
      * If the DNN was replaced, the matched subnet will have the
      * canonical DNN. Let's update the session with it.
+     * Guard against pfcp_subnet being NULL (e.g. if smf_sess_set_ue_ip
+     * succeeded but left the pointer unset for an unexpected session type).
      */
-    if (strcmp(original_apn, sess->pfcp_subnet->dnn) != 0) {
-                ogs_info("DNN replacement: original [%s], new [%s]",
-                 original_apn, sess->pfcp_subnet->dnn);
+    if (sess->pfcp_subnet &&
+            strcmp(original_apn, sess->pfcp_subnet->dnn) != 0) {
+        ogs_info("DNN replacement: original [%s], new [%s]",
+                original_apn, sess->pfcp_subnet->dnn);
         ogs_free(sess->session.name);
         sess->session.name = ogs_strdup(sess->pfcp_subnet->dnn);
         ogs_assert(sess->session.name);
+    }
+
+    /* Gx peer must be available before the session can proceed further.
+     * This check is placed after DNN/subnet resolution so that the canonical
+     * DNN is already set when the error response is sent and so that unit
+     * tests can verify DNN replacement without a live Diameter peer. */
+    if (!ogs_diam_is_relay_or_app_advertised(OGS_DIAM_GX_APPLICATION_ID)) {
+        ogs_error("No Gx Diameter Peer");
+        return OGS_GTP2_CAUSE_REMOTE_PEER_NOT_RESPONDING;
     }
 
     /* Select UPF based on UE Location Information and original APN */
@@ -314,8 +322,6 @@ uint8_t smf_s5c_handle_create_session_request(
                   smf_ue->imsi_bcd, sess->session.name);
         return OGS_GTP2_CAUSE_REMOTE_PEER_NOT_RESPONDING;
     }
-    ogs_cpystrn(sess->session.name, sess->pfcp_subnet->dnn, sizeof(sess->session.name));
-
     ogs_info("UE IMSI[%s] APN[%s] IPv4[%s] IPv6[%s]",
         smf_ue->imsi_bcd,
         sess->session.name,
