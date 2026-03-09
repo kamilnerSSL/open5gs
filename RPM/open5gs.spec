@@ -592,7 +592,9 @@ fi
 
 %changelog
 * Mon Mar 09 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-10
-- Adds dnn override tests including adjustment to s5c-handler to support testing
+- Adjust Gx test in s5c-handler to support testing
+- Adds dnn override tests
+- Adds dnn override configuration option & testing
 * Fri Mar 06 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-9
 - Move APN override to after UPF selection
 * Fri Mar 06 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-8
