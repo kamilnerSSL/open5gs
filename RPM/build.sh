@@ -1,7 +1,7 @@
 #!/bin/bash
 # build.sh - Build open5g RPMs with automatic branch-based versioning.
 #
-# Feature-branch builds get a pre-release Release field (0.1.branchname.ringer)
+# Feature-branch builds get a pre-release Release field (0.1.branchname.feature)
 # that sorts LOWER than the final merged build (1.ringer), so installing the
 # merged package always upgrades cleanly over any feature-branch build.
 #
@@ -31,8 +31,9 @@ done
 PKGNAME=$(awk '/^Name:/{print $2}' "${SPEC_FILE}")
 VERSION=$(awk '/^Version:/{print $2}' "${SPEC_FILE}")
 
-# --- Determine branch ---
+# --- Determine branch and commit count ---
 BRANCH=$(git -C "${REPO_ROOT}" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+BUILDNUM=$(git -C "${REPO_ROOT}" rev-list --count HEAD 2>/dev/null || echo "0")
 
 # Sanitize branch name: keep only alphanumeric and underscores
 BRANCH_SANITIZED=$(echo "${BRANCH}" | tr '/' '_' | tr '-' '_' | sed 's/[^a-zA-Z0-9_]//g' | tr '[:upper:]' '[:lower:]')
@@ -79,11 +80,11 @@ RPMBUILD_ARGS=(
 
 if [[ "${IS_FEATURE_BRANCH}" == "true" ]]; then
     echo "==> Feature branch build"
-    echo "    Release will be: 0.1.${BRANCH_SANITIZED}.ringer.<dist>"
-    RPMBUILD_ARGS+=(--define "branchsuffix .${BRANCH_SANITIZED}")
+    echo "    Release will be: 0.1.${BRANCH_SANITIZED}.${BUILDNUM}.sslconsult.<dist>"
+    RPMBUILD_ARGS+=(--define "branchsuffix .${BRANCH_SANITIZED}" --define "buildnum ${BUILDNUM}")
 else
     echo "==> Release build (no branch prefix)"
-    echo "    Release will be: 1.ringer.<dist>"
+    echo "    Release will be: 2.sslconsult.<dist>"
 fi
 
 echo ""
