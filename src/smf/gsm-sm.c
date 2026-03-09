@@ -91,53 +91,16 @@ static void send_gtp_delete_err_msg(const smf_sess_t *sess,
 
 static bool send_ccr_init_req_gx_gy(smf_sess_t *sess, ogs_gtp_xact_t *gtp_xact)
 {
-    int use_gy = smf_use_gy_iface();
-
-    if (use_gy == -1) {
-        ogs_error("No Gy Diameter Peer");
-        /* TODO: drop Gx connection here,
-         * possibly move to another "releasing" state! */
-        uint8_t gtp_cause = (gtp_xact->gtp_version == 1) ?
-                OGS_GTP1_CAUSE_NO_RESOURCES_AVAILABLE :
-                OGS_GTP2_CAUSE_UE_NOT_AUTHORISED_BY_OCS_OR_EXTERNAL_AAA_SERVER;
-        send_gtp_create_err_msg(sess, gtp_xact, gtp_cause);
-        return false;
-    }
-
     sess->sm_data.gx_ccr_init_in_flight = true;
     smf_gx_send_ccr(
             sess, gtp_xact ? gtp_xact->id : OGS_INVALID_POOL_ID,
             OGS_DIAM_GX_CC_REQUEST_TYPE_INITIAL_REQUEST);
-
-    if (use_gy == 1) {
-        /* Gy is available,
-         * set up session for the bearer before accepting it towards the UE */
-        sess->sm_data.gy_ccr_init_in_flight = true;
-        smf_gy_send_ccr(
-                sess, gtp_xact ? gtp_xact->id : OGS_INVALID_POOL_ID,
-                OGS_DIAM_GY_CC_REQUEST_TYPE_INITIAL_REQUEST);
-    }
     return true;
 }
 
 static bool send_ccr_termination_req_gx_gy_s6b(
         smf_sess_t *sess, ogs_gtp_xact_t *gtp_xact)
 {
-    /* TODO: we should take into account here whether "sess" has an active Gy
-       session created, not whether one was supposedly created as per policy */
-    int use_gy = smf_use_gy_iface();
-
-    if (use_gy == -1) {
-        ogs_error("No Gy Diameter Peer");
-        /* TODO: drop Gx connection here,
-         * possibly move to another "releasing" state! */
-        uint8_t gtp_cause = (gtp_xact->gtp_version == 1) ?
-                OGS_GTP1_CAUSE_NO_RESOURCES_AVAILABLE :
-                OGS_GTP2_CAUSE_UE_NOT_AUTHORISED_BY_OCS_OR_EXTERNAL_AAA_SERVER;
-        send_gtp_delete_err_msg(sess, gtp_xact, gtp_cause);
-        return false;
-    }
-
     if (sess->gtp_rat_type == OGS_GTP2_RAT_TYPE_WLAN) {
         sess->sm_data.s6b_str_in_flight = true;
         smf_s6b_send_str(sess, gtp_xact,
@@ -149,9 +112,7 @@ static bool send_ccr_termination_req_gx_gy_s6b(
             sess, gtp_xact ? gtp_xact->id : OGS_INVALID_POOL_ID,
             OGS_DIAM_GX_CC_REQUEST_TYPE_TERMINATION_REQUEST);
 
-    if (use_gy == 1) {
-        /* Gy is available,
-         * set up session for the bearer before accepting it towards the UE */
+    if (sess->gy_enabled) {
         sess->sm_data.gy_ccr_term_in_flight = true;
         smf_gy_send_ccr(
                 sess, gtp_xact ? gtp_xact->id : OGS_INVALID_POOL_ID,
@@ -454,6 +415,23 @@ void smf_gsm_state_wait_epc_auth_initial(ogs_fsm_t *s, smf_event_t *e)
                                 gx_message, gtp_xact);
                 sess->sm_data.gx_ccr_init_in_flight = false;
                 sess->sm_data.gx_cca_init_err = diam_err;
+                if (diam_err == ER_DIAMETER_SUCCESS && sess->gy_enabled) {
+                    /* PCRF indicated online charging: now send Gy CCR */
+                    int use_gy = smf_use_gy_iface();
+                    if (use_gy == 1) {
+                        sess->sm_data.gy_ccr_init_in_flight = true;
+                        smf_gy_send_ccr(
+                            sess,
+                            gtp_xact ? gtp_xact->id : OGS_INVALID_POOL_ID,
+                            OGS_DIAM_GY_CC_REQUEST_TYPE_INITIAL_REQUEST);
+                        return; /* Wait for Gy CCA */
+                    } else if (use_gy == -1) {
+                        ogs_error("PCRF requires online charging but no Gy Diameter Peer");
+                        sess->sm_data.gx_cca_init_err =
+                            OGS_DIAM_UNABLE_TO_DELIVER;
+                    }
+                    /* use_gy == 0: config disables Gy, proceed without it */
+                }
                 goto test_can_proceed;
             }
             break;
@@ -510,7 +488,7 @@ test_can_proceed:
                     sess, gtp_xact ? gtp_xact->id : OGS_INVALID_POOL_ID,
                     OGS_DIAM_GX_CC_REQUEST_TYPE_TERMINATION_REQUEST);
             }
-            if (smf_use_gy_iface() == 1 &&
+            if (sess->gy_enabled &&
                 (sess->sm_data.gy_cca_init_err == ER_DIAMETER_SUCCESS || need_gy_terminate)) {
                 sess->sm_data.gy_ccr_term_in_flight = true;
                 smf_gy_send_ccr(

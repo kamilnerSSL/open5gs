@@ -1028,6 +1028,16 @@ static void smf_gx_cca_cb(void *data, struct msg **msg)
         }
     }
 
+    /* Process Online AVP (online charging indicator from PCRF) */
+    ret = fd_msg_search_avp(*msg, ogs_diam_gx_online, &avp);
+    ogs_assert(ret == 0);
+    if (avp) {
+        ret = fd_msg_avp_hdr(avp, &hdr);
+        ogs_assert(ret == 0);
+        gx_message->online = hdr->avp_value->u32;
+        ogs_debug("    Online: %d", gx_message->online);
+    }
+
     /* Process Charging Rule Install */
     ret = fd_msg_browse(*msg, MSG_BRW_FIRST_CHILD, &avp, NULL);
     ogs_assert(ret == 0);
@@ -1048,6 +1058,7 @@ static void smf_gx_cca_cb(void *data, struct msg **msg)
         case OGS_DIAM_GX_AVP_CODE_SUPPORTED_FEATURES:
         case OGS_DIAM_GX_AVP_CODE_QOS_INFORMATION:
         case OGS_DIAM_GX_AVP_CODE_DEFAULT_EPS_BEARER_QOS:
+        case OGS_DIAM_GX_AVP_CODE_ONLINE:
             /* Already processed above */
             break;
         case OGS_DIAM_GX_AVP_CODE_CHARGING_RULE_INSTALL:

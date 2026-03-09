@@ -1757,8 +1757,7 @@ uint8_t smf_n4_handle_session_report_request(
             sess->gy.reporting_reason =
                 smf_pfcp_urr_usage_report_trigger2diam_gy_reporting_reason(&rep_trig);
         }
-        switch (smf_use_gy_iface()) {
-        case 1:
+        if (sess->gy_enabled) {
             if (!sess->gy.final_unit) {
                 smf_gy_send_ccr(
                         sess, pfcp_xact->id,
@@ -1769,12 +1768,6 @@ uint8_t smf_n4_handle_session_report_request(
                 /* This effectively triggers session release: */
                 cause_value = OGS_PFCP_CAUSE_NO_RESOURCES_AVAILABLE;
             }
-            break;
-        case -1:
-            ogs_error("No Gy Diameter Peer");
-            cause_value = OGS_PFCP_CAUSE_NO_RESOURCES_AVAILABLE;
-            break;
-        /* default: continue below */
         }
     }
 

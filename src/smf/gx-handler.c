@@ -55,6 +55,8 @@ uint32_t smf_gx_handle_cca_initial_request(
         return gx_message->err ? *gx_message->err :
                                  ER_DIAMETER_AUTHENTICATION_REJECTED;
 
+    /* Store whether PCRF requires online charging for this session */
+    sess->gy_enabled = (gx_message->online == OGS_DIAM_GX_ENABLE_ONLINE);
 
     sess->policy.num_of_pcc_rule = gx_message->session_data.num_of_pcc_rule;
     for (i = 0; i < gx_message->session_data.num_of_pcc_rule; i++)
