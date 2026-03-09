@@ -1,7 +1,7 @@
 %global _build_id_links none
 
 %define autorelease(e:s:pb:n) %{?-p:0.}%{lua:
-    release_number = 9;
+    release_number = 10;
     base_release_number = tonumber(rpm.expand("%{?-b*}%{!?-b:1}"));
     print(release_number + base_release_number - 1);
 }%{?-e:.%{-e*}}%{?-s:.%{-s*}}%{!?-n:%{?dist}}
@@ -591,12 +591,14 @@ fi
 %{_unitdir}/open5gs-upfd.service
 
 %changelog
+* Mon Mar 09 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-10
+- Adds dnn override tests including adjustment to s5c-handler to support testing
 * Fri Mar 06 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-9
-- Move APN replacement to after UPF selection
+- Move APN override to after UPF selection
 * Fri Mar 06 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-8
-- Fixes encoding of replacement APN & some logging message changes
+- Fixes encoding of override APN & some logging message changes
 * Fri Mar 06 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-7
-- Merge in upstream changes and fix dnn replacement
+- Merge in upstream changes and fix dnn override
 * Fri Mar 06 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-6
 - Fixes for incorrect DNN matching and response
 * Thu Mar 05 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-5

@@ -284,14 +284,14 @@ uint8_t smf_s5c_handle_create_session_request(
     }
 
     /*
-     * If the DNN was replaced, the matched subnet will have the
+     * If the DNN was overridden, the matched subnet will have the
      * canonical DNN. Let's update the session with it.
      * Guard against pfcp_subnet being NULL (e.g. if smf_sess_set_ue_ip
      * succeeded but left the pointer unset for an unexpected session type).
      */
     if (sess->pfcp_subnet &&
             strcmp(original_apn, sess->pfcp_subnet->dnn) != 0) {
-        ogs_info("DNN replacement: original [%s], new [%s]",
+        ogs_info("DNN override: original [%s], new [%s]",
                 original_apn, sess->pfcp_subnet->dnn);
         ogs_free(sess->session.name);
         sess->session.name = ogs_strdup(sess->pfcp_subnet->dnn);
@@ -301,7 +301,7 @@ uint8_t smf_s5c_handle_create_session_request(
     /* Gx peer must be available before the session can proceed further.
      * This check is placed after DNN/subnet resolution so that the canonical
      * DNN is already set when the error response is sent and so that unit
-     * tests can verify DNN replacement without a live Diameter peer. */
+     * tests can verify DNN override without a live Diameter peer. */
     if (!ogs_diam_is_relay_or_app_advertised(OGS_DIAM_GX_APPLICATION_ID)) {
         ogs_error("No Gx Diameter Peer");
         return OGS_GTP2_CAUSE_REMOTE_PEER_NOT_RESPONDING;

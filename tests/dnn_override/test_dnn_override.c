@@ -29,7 +29,7 @@
 
 void test_setup(void);
 void test_teardown(void);
-void test_dnn_replacement(const char *request_dnn, const char *canonical_dnn);
+void test_dnn_override(const char *request_dnn, const char *canonical_dnn);
 
 static void build_test_config(
         char *buf, size_t len,
@@ -117,7 +117,7 @@ void test_teardown(void)
     ogs_gtp_xact_final();
 }
 
-void test_dnn_replacement(const char *request_dnn, const char *canonical_dnn)
+void test_dnn_override(const char *request_dnn, const char *canonical_dnn)
 {
     ogs_gtp2_message_t message;
     ogs_gtp2_create_session_request_t *req = NULL;
@@ -140,7 +140,7 @@ void test_dnn_replacement(const char *request_dnn, const char *canonical_dnn)
     ogs_gtp_xact_t mock_xact;
     memset(&mock_xact, 0, sizeof(mock_xact));
 
-    ogs_info("--- test_dnn_replacement: request=[%s] canonical=[%s] ---",
+    ogs_info("--- test_dnn_override: request=[%s] canonical=[%s] ---",
              request_dnn, canonical_dnn);
 
     /* 1. Build mock Create Session Request */
@@ -227,16 +227,16 @@ void test_dnn_replacement(const char *request_dnn, const char *canonical_dnn)
     ogs_info("Session created with DNN: %s", sess->session.name);
     ogs_assert(strcmp(sess->session.name, request_dnn) == 0);
 
-    /* 3. Handle the request, which triggers DNN replacement.
+    /* 3. Handle the request, which triggers DNN override.
      * In a unit-test environment there is no connected Gx Diameter peer, so
-     * the handler will return REMOTE_PEER_NOT_RESPONDING after DNN replacement
-     * has already been applied.  The DNN replacement itself (steps 4-5) is
+     * the handler will return REMOTE_PEER_NOT_RESPONDING after DNN override
+     * has already been applied.  The DNN override itself (steps 4-5) is
      * what this test exercises. */
     cause = smf_s5c_handle_create_session_request(sess, &mock_xact, req);
     ogs_info("Handler returned cause: %u", cause);
 
     /* 4. Verify the session's DNN has been updated to the canonical one */
-    ogs_info("Verifying session DNN was replaced with canonical DNN");
+    ogs_info("Verifying session DNN was overridden with canonical DNN");
     ogs_assert(strcmp(sess->session.name, canonical_dnn) == 0);
     ogs_assert(sess->pfcp_subnet);
     ogs_assert(strcmp(sess->pfcp_subnet->dnn, canonical_dnn) == 0);
@@ -249,7 +249,7 @@ void test_dnn_replacement(const char *request_dnn, const char *canonical_dnn)
         OGS_GTP2_CREATE_SESSION_RESPONSE_TYPE, sess);
     ogs_assert(pkbuf);
 
-    ogs_info("DNN replacement test passed!");
+    ogs_info("DNN override test passed!");
 
     /* Cleanup: remove the UE (which removes its sessions) so the UE list is
      * empty before smf_context_final() tries to iterate it during teardown. */
@@ -318,7 +318,7 @@ int main(int argc, char *argv[])
     ogs_assert(ogs_app()->pollset);
 
     test_setup();
-    test_dnn_replacement(request_dnn, canonical_dnn);
+    test_dnn_override(request_dnn, canonical_dnn);
     test_teardown();
 
     ogs_app_terminate();

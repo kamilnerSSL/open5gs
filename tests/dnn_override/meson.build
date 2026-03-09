@@ -15,14 +15,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-test_dnn_replace_src = [
-  'test_dnn_replace.c',
+test_dnn_override_src = [
+  'test_dnn_override.c',
 ]
 
-test_dnn_replace_exe = executable('test-dnn-replace',
-  test_dnn_replace_src,
+test_dnn_override_exe = executable('test-dnn-override',
+  test_dnn_override_src,
   include_directories : ['../../lib', '../../src', testinc],
   dependencies : [ libapp_dep, libsmf_dep, libcore_dep, libgtp_dep, libpfcp_dep, libsbi_dep ],
 )
 
-test('dnn_replace', test_dnn_replace_exe, suite: 'smf')
+test('dnn_override', test_dnn_override_exe, suite: 'smf')
