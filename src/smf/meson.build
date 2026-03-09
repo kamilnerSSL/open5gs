@@ -131,6 +131,7 @@ libsmf = static_library('smf',
 
 libsmf_dep = declare_dependency(
     link_with : libsmf,
+    include_directories : ['.'],
     dependencies : [libmetrics_dep,
                     libsbi_dep,
                     libngap_dep,

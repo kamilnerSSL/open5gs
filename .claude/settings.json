@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(MALLOC_PERTURB_=233 valgrind --error-exitcode=1 /home/kamilner/contrib/open5gs/build/tests/dnn_replace/test-dnn-replace)",
+      "Bash(ninja -C /home/kamilner/contrib/open5gs/build tests/dnn_replace/test-dnn-replace)"
+    ]
+  }
+}
