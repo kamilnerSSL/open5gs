@@ -9,7 +9,9 @@
 # release number is used and the resulting package will supersede any
 # pre-release feature-branch builds of the same Version.
 %if "%{?branchsuffix}" != ""
-%global _release 0.1%{branchsuffix}%{basesuffix}
+# buildnum is the git commit count, passed by build.sh. It increments with
+# every commit so dnf/yum always sees a rebuild as a newer package.
+%global _release 0.1%{branchsuffix}.%{?buildnum}%{!?buildnum:0}%{basesuffix}
 %else
 %global _release 2%{basesuffix}
 %endif
