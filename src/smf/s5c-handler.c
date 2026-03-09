@@ -457,10 +457,40 @@ uint8_t smf_s5c_handle_create_session_request(
         OGS_TLV_STORE_DATA(&sess->gtp.ue_epco,
                 &req->extended_protocol_configuration_options);
 
+        if (sess->gtp.ue_epco.data && sess->gtp.ue_epco.len) {
+            ogs_pco_t pco;
+            int i;
+            if (ogs_pco_parse(&pco, sess->gtp.ue_epco.data,
+                        sess->gtp.ue_epco.len) > 0) {
+                for (i = 0; i < pco.num_of_id; i++) {
+                    if (pco.ids[i].id == OGS_PCO_ID_3GPP_PS_DATA_OFF) {
+                        sess->ps_data_off.present = true;
+                        ogs_debug("UE supports 3GPP PS data off");
+                        break;
+                    }
+                }
+            }
+        }
+
     /* PCO */
     } else if (req->protocol_configuration_options.presence) {
         OGS_TLV_STORE_DATA(&sess->gtp.ue_pco,
                 &req->protocol_configuration_options);
+
+        if (sess->gtp.ue_pco.data && sess->gtp.ue_pco.len) {
+            ogs_pco_t pco;
+            int i;
+            if (ogs_pco_parse(&pco, sess->gtp.ue_pco.data,
+                        sess->gtp.ue_pco.len) > 0) {
+                for (i = 0; i < pco.num_of_id; i++) {
+                    if (pco.ids[i].id == OGS_PCO_ID_3GPP_PS_DATA_OFF) {
+                        sess->ps_data_off.present = true;
+                        ogs_debug("UE supports 3GPP PS data off");
+                        break;
+                    }
+                }
+            }
+        }
     }
 
     /* APCO */
