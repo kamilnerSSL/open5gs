@@ -1,22 +1,27 @@
 %global _build_id_links none
-
-%define autorelease(e:s:pb:n) %{?-p:0.}%{lua:
-    release_number = 10;
-    base_release_number = tonumber(rpm.expand("%{?-b*}%{!?-b:1}"));
-    print(release_number + base_release_number - 1);
-}%{?-e:.%{-e*}}%{?-s:.%{-s*}}%{!?-n:%{?dist}}
-
 %global _hardened_build 1
-%define customversion .ringer
 
-Name:           open5gs
+# basesuffix identifies your packaging (always appended to Release).
+%global basesuffix .sslconsult
+
+# branchsuffix is passed at build time via --define 'branchsuffix .feature_name'
+# for feature-branch builds.  When absent (main/release builds) the normal
+# release number is used and the resulting package will supersede any
+# pre-release feature-branch builds of the same Version.
+%if "%{?branchsuffix}" != ""
+%global _release 0.1%{branchsuffix}%{basesuffix}
+%else
+%global _release 2%{basesuffix}
+%endif
+
+Name:           open5g
 Version:        2.7.6
-Release:        %autorelease%{?customversion}
+Release:        %{_release}%{?dist}
 Summary:        Open Source Core Network for 5G
 
 License:        AGPL-3.0-or-later
 URL:            https://open5gs.org
-Source0:        https://github.com/open5gs/open5gs/archive/refs/tags/v%{version}.tar.gz#/open5gs-%{version}.tar.gz
+Source0:        https://github.com/open5gs/open5gs/archive/refs/tags/v%{version}.tar.gz#/open5gs-v%{version}.tar.gz
 
 BuildRequires:  gcc
 BuildRequires:  gcc-c++
@@ -591,25 +596,31 @@ fi
 %{_unitdir}/open5gs-upfd.service
 
 %changelog
-* Mon Mar 09 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-10
+* Mon Mar 09 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-2
+- Switch to branch-aware versioning: feature-branch builds use 0.1.branchname
+  prefix so they sort below the merged release build
+- Replace custom autorelease macro with explicit Release field controlled by
+  optional branchsuffix define; use build.sh to set it automatically
+
+* Mon Mar 09 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-0.1.apn_hack-10
 - Adjust Gx test in s5c-handler to support testing
 - Adds dnn override tests
 - Adds dnn override configuration option & testing
-* Fri Mar 06 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-9
+* Fri Mar 06 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-0.1.apn_hack-9
 - Move APN override to after UPF selection
-* Fri Mar 06 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-8
+* Fri Mar 06 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-0.1.apn_hack-8
 - Fixes encoding of override APN & some logging message changes
-* Fri Mar 06 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-7
+* Fri Mar 06 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-0.1.apn_hack-7
 - Merge in upstream changes and fix dnn override
-* Fri Mar 06 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-6
+* Fri Mar 06 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-0.1.apn_hack-6
 - Fixes for incorrect DNN matching and response
-* Thu Mar 05 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-5
+* Thu Mar 05 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-0.1.apn_hack-5
 - Support for multiple DNNs in SMF
-* Thu Mar 05 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-4
+* Thu Mar 05 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-0.1.apn_hack-4
 - Updates to prevent crashing
-* Thu Mar 05 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-3
+* Thu Mar 05 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-0.1.apn_hack-3
 - Adds ability to accept multiple DNNs and rewrite to primary in response
-* Thu Feb 12 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-2
+* Thu Feb 12 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-0.1.apn_hack-2
 - Adds debugging for SMF and small fix for AMBR setting
 * Thu Sep 18 2025 Keith Milner <kamilner@sslconsult.com> - 2.7.6-1
 - Initial RPM packaging for Open5GS
