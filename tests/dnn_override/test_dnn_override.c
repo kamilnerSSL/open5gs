@@ -30,10 +30,20 @@
 void test_setup(void);
 void test_teardown(void);
 void test_dnn_override(const char *request_dnn, const char *canonical_dnn);
+void test_dnn_no_override(const char *request_dnn);
 
+/*
+ * Build a config with two session entries:
+ *   1. canonical_dnn  override: true   aliases: [alias_dnn]
+ *   2. no_override_dnn  override: false  aliases: [no_override_alias_dnn]
+ *
+ * Having both subnets in one config lets the YAML parsing of both
+ * override: true and override: false be exercised in a single test cycle.
+ */
 static void build_test_config(
         char *buf, size_t len,
-        const char *canonical_dnn, const char *accept_dnn)
+        const char *canonical_dnn, const char *alias_dnn,
+        const char *no_override_dnn, const char *no_override_alias_dnn)
 {
     snprintf(buf, len,
         "logger:\n"
@@ -51,11 +61,18 @@ static void build_test_config(
         "  session:\n"
         "    - dnn: %s\n"
         "      subnet: 10.45.0.0/16\n"
+        "      override: true\n"
+        "      aliases:\n"
+        "        - %s\n"
+        "    - dnn: %s\n"
+        "      subnet: 10.46.0.0/16\n"
+        "      override: false\n"
         "      aliases:\n"
         "        - %s\n"
         "  dns:\n"
         "    - 8.8.8.8\n",
-        canonical_dnn, accept_dnn);
+        canonical_dnn, alias_dnn,
+        no_override_dnn, no_override_alias_dnn);
 }
 
 void test_setup(void)
@@ -178,18 +195,18 @@ void test_dnn_override(const char *request_dnn, const char *canonical_dnn)
     /* Serving Network */
     serving_network_raw[0] = 0x00; /* MCC 001 */
     serving_network_raw[1] = 0xf1;
-    serving_network_raw[2] = 0x10; /* MNC 001 */
+    serving_network_raw[2] = 0x10; /* MNC 01 */
     req->serving_network.presence = 1;
     req->serving_network.data = serving_network_raw;
     req->serving_network.len = 3;
 
-    /* ULI */
-    uli_raw[0] = 0x08; /* TAI present (bit 3 in flags byte) */
-    uli_raw[1] = 0x00; /* MCC 001 */
-    uli_raw[2] = 0xf1;
-    uli_raw[3] = 0x10; /* MNC 001 */
-    uli_raw[4] = 0x00; /* TAC */
-    uli_raw[5] = 0x01;
+    /* ULI: TAI only (flags byte = 0x08 per 3GPP 29.274 Table 8.22-1) */
+    uli_raw[0] = 0x08; /* TAI present */
+    uli_raw[1] = 0x00; /* MCC 001: digit2|digit1 */
+    uli_raw[2] = 0xf1; /* MNC filler|MCC digit3 */
+    uli_raw[3] = 0x10; /* MNC digit2|digit1 (MNC=01) */
+    uli_raw[4] = 0x00; /* TAC high byte */
+    uli_raw[5] = 0x01; /* TAC low byte */
     req->user_location_information.presence = 1;
     req->user_location_information.data = uli_raw;
     req->user_location_information.len = sizeof(uli_raw);
@@ -257,15 +274,142 @@ void test_dnn_override(const char *request_dnn, const char *canonical_dnn)
     smf_ue_remove(smf_ue_find_by_id(sess->smf_ue_id));
 }
 
+void test_dnn_no_override(const char *request_dnn)
+{
+    ogs_gtp2_message_t message;
+    ogs_gtp2_create_session_request_t *req = NULL;
+    char apn_buf[OGS_MAX_APN_LEN + 1];
+    uint8_t imsi[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07 };
+
+    ogs_gtp2_f_teid_t sgw_s5c_teid;
+    ogs_paa_t paa;
+    uint8_t serving_network_raw[3];
+    uint8_t uli_raw[1 + 5];
+
+    ogs_gtp2_bearer_qos_t bqos;
+    ogs_gtp2_f_teid_t sgw_s5u_teid;
+
+    smf_sess_t *sess = NULL;
+    uint8_t cause;
+
+    ogs_pkbuf_t *pkbuf = NULL;
+
+    ogs_gtp_xact_t mock_xact;
+    memset(&mock_xact, 0, sizeof(mock_xact));
+
+    ogs_info("--- test_dnn_no_override: request=[%s] ---", request_dnn);
+
+    /* 1. Build mock Create Session Request */
+    memset(&message, 0, sizeof(message));
+    req = &message.create_session_request;
+
+    req->imsi.presence = 1;
+    req->imsi.len = OGS_MAX_IMSI_LEN;
+    req->imsi.data = imsi;
+
+    req->rat_type.presence = 1;
+    req->rat_type.u8 = OGS_GTP2_RAT_TYPE_EUTRAN;
+
+    req->access_point_name.presence = 1;
+    req->access_point_name.len = ogs_fqdn_build(
+        apn_buf, request_dnn, strlen(request_dnn));
+    req->access_point_name.data = (uint8_t *)apn_buf;
+
+    /* F-TEID for Control Plane */
+    memset(&sgw_s5c_teid, 0, sizeof(sgw_s5c_teid));
+    sgw_s5c_teid.ipv4 = 1;
+    sgw_s5c_teid.interface_type = 6;
+    sgw_s5c_teid.teid = htobe32(0xdeadbeef);
+    sgw_s5c_teid.addr = htonl(0x7f000001);
+    req->sender_f_teid_for_control_plane.presence = 1;
+    req->sender_f_teid_for_control_plane.data = &sgw_s5c_teid;
+
+    /* PAA */
+    memset(&paa, 0, sizeof(paa));
+    paa.session_type = OGS_PDU_SESSION_TYPE_IPV4;
+    paa.addr = htonl(0x0a2d0002);
+    req->pdn_address_allocation.presence = 1;
+    req->pdn_address_allocation.data = &paa;
+
+    /* Serving Network */
+    serving_network_raw[0] = 0x00;
+    serving_network_raw[1] = 0xf1;
+    serving_network_raw[2] = 0x10;
+    req->serving_network.presence = 1;
+    req->serving_network.data = serving_network_raw;
+    req->serving_network.len = 3;
+
+    /* ULI: TAI only */
+    uli_raw[0] = 0x08;
+    uli_raw[1] = 0x00;
+    uli_raw[2] = 0xf1;
+    uli_raw[3] = 0x10;
+    uli_raw[4] = 0x00;
+    uli_raw[5] = 0x01;
+    req->user_location_information.presence = 1;
+    req->user_location_information.data = uli_raw;
+    req->user_location_information.len = sizeof(uli_raw);
+
+    /* Bearer Context */
+    req->bearer_contexts_to_be_created[0].presence = 1;
+    req->bearer_contexts_to_be_created[0].eps_bearer_id.presence = 1;
+    req->bearer_contexts_to_be_created[0].eps_bearer_id.u8 = 5;
+
+    memset(&bqos, 0, sizeof(bqos));
+    bqos.priority_level = 1;
+    bqos.qci = 9;
+    req->bearer_contexts_to_be_created[0].bearer_level_qos.presence = 1;
+    req->bearer_contexts_to_be_created[0].bearer_level_qos.data = &bqos;
+
+    memset(&sgw_s5u_teid, 0, sizeof(sgw_s5u_teid));
+    sgw_s5u_teid.ipv4 = 1;
+    sgw_s5u_teid.interface_type = 8;
+    sgw_s5u_teid.teid = htobe32(0xcafebabe);
+    sgw_s5u_teid.addr = htonl(0x7f000001);
+    req->bearer_contexts_to_be_created[0].s5_s8_u_sgw_f_teid.presence = 1;
+    req->bearer_contexts_to_be_created[0].s5_s8_u_sgw_f_teid.data = &sgw_s5u_teid;
+
+    /* 2. Create session */
+    sess = smf_sess_add_by_gtp2_message(&message);
+    ogs_assert(sess);
+    sess->sgw_s5c_teid = be32toh(sgw_s5c_teid.teid);
+    ogs_info("Session created with DNN: %s", sess->session.name);
+    ogs_assert(strcmp(sess->session.name, request_dnn) == 0);
+
+    /* 3. Handle the request. DNN override is disabled so the session DNN
+     * should remain as the requested DNN throughout. */
+    cause = smf_s5c_handle_create_session_request(sess, &mock_xact, req);
+    ogs_info("Handler returned cause: %u", cause);
+
+    /* 4. Verify the session's DNN was NOT changed */
+    ogs_info("Verifying session DNN was not overridden");
+    ogs_assert(strcmp(sess->session.name, request_dnn) == 0);
+    ogs_assert(sess->pfcp_subnet);
+
+    /* 5. Build the response; it should encode the original request DNN */
+    pkbuf = smf_s5c_build_create_session_response(
+        OGS_GTP2_CREATE_SESSION_RESPONSE_TYPE, sess);
+    ogs_assert(pkbuf);
+
+    ogs_info("DNN no-override test passed!");
+
+    ogs_pkbuf_free(pkbuf);
+    smf_ue_remove(smf_ue_find_by_id(sess->smf_ue_id));
+}
+
 int main(int argc, char *argv[])
 {
     yaml_parser_t parser;
     yaml_document_t *doc = NULL;
     char test_config[4096];
 
-    /* DNN values under test */
-    const char *canonical_dnn = "internet";
-    const char *request_dnn   = "internet.mnc001.mcc001.gprs";
+    /* DNN values for override: true test */
+    const char *canonical_dnn  = "internet";
+    const char *alias_dnn      = "internet.mnc001.mcc001.gprs";
+
+    /* DNN values for override: false test */
+    const char *no_override_dnn       = "intranet";
+    const char *no_override_alias_dnn = "intranet.mnc001.mcc001.gprs";
 
     ogs_core_initialize();
 
@@ -274,9 +418,10 @@ int main(int argc, char *argv[])
     ogs_app_config_init();
     ogs_app_global_conf_prepare();
 
-    /* Build the YAML config using the chosen DNN values */
+    /* Build the YAML config with both subnet entries */
     build_test_config(test_config, sizeof(test_config),
-                      canonical_dnn, request_dnn);
+                      canonical_dnn, alias_dnn,
+                      no_override_dnn, no_override_alias_dnn);
 
     /* Manually parse the YAML string into a document */
     doc = malloc(sizeof(yaml_document_t));
@@ -318,7 +463,13 @@ int main(int argc, char *argv[])
     ogs_assert(ogs_app()->pollset);
 
     test_setup();
-    test_dnn_override(request_dnn, canonical_dnn);
+
+    /* Test 1: override: true — session DNN is replaced with canonical DNN */
+    test_dnn_override(alias_dnn, canonical_dnn);
+
+    /* Test 2: override: false — session DNN is left unchanged */
+    test_dnn_no_override(no_override_alias_dnn);
+
     test_teardown();
 
     ogs_app_terminate();

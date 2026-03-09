@@ -765,6 +765,7 @@ int ogs_pfcp_context_parse_config(const char *local, const char *remote)
                         const char *high[OGS_MAX_NUM_OF_SUBNET_RANGE];
                         const char* accept[OGS_MAX_NUM_OF_ACCEPTED_DNN];
                         int num_of_accept = 0;
+                        bool dnn_override = true;
 
                         int i, num = 0;
 
@@ -840,6 +841,13 @@ int ogs_pfcp_context_parse_config(const char *local, const char *remote)
                                 } while (
                                     ogs_yaml_iter_type(&range_iter) ==
                                     YAML_SEQUENCE_NODE);
+                            } else if (!strcmp(subnet_key, "override")) {
+                                const char *v =
+                                    ogs_yaml_iter_value(&subnet_iter);
+                                if (v) dnn_override =
+                                    (strcmp(v, "false") != 0 &&
+                                     strcmp(v, "no") != 0 &&
+                                     strcmp(v, "0") != 0);
                             } else if (!strcmp(subnet_key, "aliases")) {
                                 ogs_yaml_iter_t accept_iter;
                                 ogs_yaml_iter_recurse(
@@ -881,6 +889,7 @@ int ogs_pfcp_context_parse_config(const char *local, const char *remote)
                         for (i = 0; i < subnet->num_of_accept; i++) {
                             subnet->accept[i] = accept[i];
                         }
+                        subnet->dnn_override = dnn_override;
 
                     } while (ogs_yaml_iter_type(&subnet_array) ==
                             YAML_SEQUENCE_NODE);
@@ -2588,7 +2597,7 @@ ogs_pfcp_subnet_t *ogs_pfcp_find_subnet_by_dnn(int family, const char *dnn)
             int i;
             for (i = 0; i < subnet->num_of_accept; i++) {
                 if (!ogs_strcasecmp(subnet->accept[i], dnn) && subnet->pool.avail) {
-                    ogs_info("Replacing APN [%s] with DNN [%s]", dnn, subnet->dnn);
+                    ogs_info("Alias match: APN [%s] maps to subnet DNN [%s]", dnn, subnet->dnn);
                     return subnet;
                 }
             }

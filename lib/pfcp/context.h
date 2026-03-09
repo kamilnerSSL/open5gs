@@ -371,6 +371,7 @@ typedef struct ogs_pfcp_subnet_s {
 #define OGS_MAX_NUM_OF_ACCEPTED_DNN 16
     const char*     accept[OGS_MAX_NUM_OF_ACCEPTED_DNN];
     int             num_of_accept;
+    bool            dnn_override;   /* Whether to override session DNN with subnet DNN */
 
 #define OGS_MAX_NUM_OF_SUBNET_RANGE 16
     struct {

@@ -290,6 +290,7 @@ uint8_t smf_s5c_handle_create_session_request(
      * succeeded but left the pointer unset for an unexpected session type).
      */
     if (sess->pfcp_subnet &&
+            sess->pfcp_subnet->dnn_override &&
             strcmp(original_apn, sess->pfcp_subnet->dnn) != 0) {
         ogs_info("DNN override: original [%s], new [%s]",
                 original_apn, sess->pfcp_subnet->dnn);
