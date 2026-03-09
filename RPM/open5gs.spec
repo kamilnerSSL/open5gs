@@ -1,22 +1,29 @@
 %global _build_id_links none
-
-%define autorelease(e:s:pb:n) %{?-p:0.}%{lua:
-    release_number = 2;
-    base_release_number = tonumber(rpm.expand("%{?-b*}%{!?-b:1}"));
-    print(release_number + base_release_number - 1);
-}%{?-e:.%{-e*}}%{?-s:.%{-s*}}%{!?-n:%{?dist}}
-
 %global _hardened_build 1
-%define customversion .ringer
 
-Name:           open5gs
+# basesuffix identifies your packaging (always appended to Release).
+%global basesuffix .sslconsult
+
+# branchsuffix is passed at build time via --define 'branchsuffix .feature_name'
+# for feature-branch builds.  When absent (main/release builds) the normal
+# release number is used and the resulting package will supersede any
+# pre-release feature-branch builds of the same Version.
+%if "%{?branchsuffix}" != ""
+# buildnum is the git commit count, passed by build.sh. It increments with
+# every commit so dnf/yum always sees a rebuild as a newer package.
+%global _release 0.1%{branchsuffix}.%{?buildnum}%{!?buildnum:0}%{basesuffix}
+%else
+%global _release 2%{basesuffix}
+%endif
+
+Name:           open5g
 Version:        2.7.6
-Release:        %autorelease%{?customversion}
+Release:        %{_release}%{?dist}
 Summary:        Open Source Core Network for 5G
 
 License:        AGPL-3.0-or-later
 URL:            https://open5gs.org
-Source0:        https://github.com/open5gs/open5gs/archive/refs/tags/v%{version}.tar.gz#/open5gs-%{version}.tar.gz
+Source0:        https://github.com/open5gs/open5gs/archive/refs/tags/v%{version}.tar.gz#/open5gs-v%{version}.tar.gz
 
 BuildRequires:  gcc
 BuildRequires:  gcc-c++
@@ -591,6 +598,11 @@ fi
 %{_unitdir}/open5gs-upfd.service
 
 %changelog
+* Mon Mar 09 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-2
+- Switch to branch-aware versioning: feature-branch builds use 0.1.branchname
+  prefix so they sort below the merged release build
+- Replace custom autorelease macro with explicit Release field controlled by
+  optional branchsuffix define; use build.sh to set it automatically
 * Thu Feb 12 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-2
 - Adds debugging for SMF and small fix for AMBR setting
 * Thu Sep 18 2025 Keith Milner <kamilner@sslconsult.com> - 2.7.6-1
