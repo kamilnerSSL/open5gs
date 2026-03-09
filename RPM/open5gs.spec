@@ -2,7 +2,7 @@
 %global _hardened_build 1
 
 # basesuffix identifies your packaging (always appended to Release).
-%global basesuffix .ringer
+%global basesuffix .sslconsult
 
 # branchsuffix is passed at build time via --define 'branchsuffix .feature_name'
 # for feature-branch builds.  When absent (main/release builds) the normal
@@ -11,7 +11,7 @@
 %if "%{?branchsuffix}" != ""
 %global _release 0.1%{branchsuffix}%{basesuffix}
 %else
-%global _release 1%{basesuffix}
+%global _release 2%{basesuffix}
 %endif
 
 Name:           open5g
@@ -596,7 +596,7 @@ fi
 %{_unitdir}/open5gs-upfd.service
 
 %changelog
-* Mon Mar 09 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-1.ringer
+* Mon Mar 09 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-2
 - Switch to branch-aware versioning: feature-branch builds use 0.1.branchname
   prefix so they sort below the merged release build
 - Replace custom autorelease macro with explicit Release field controlled by
