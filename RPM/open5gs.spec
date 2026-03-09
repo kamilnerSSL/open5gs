@@ -1,17 +1,22 @@
 %global _build_id_links none
-
-%define autorelease(e:s:pb:n) %{?-p:0.}%{lua:
-    release_number = 1;
-    base_release_number = tonumber(rpm.expand("%{?-b*}%{!?-b:1}"));
-    print(release_number + base_release_number - 1);
-}%{?-e:.%{-e*}}%{?-s:.%{-s*}}%{!?-n:%{?dist}}
-
 %global _hardened_build 1
-%define customversion .ringer
+
+# basesuffix identifies your packaging (always appended to Release).
+%global basesuffix .ringer
+
+# branchsuffix is passed at build time via --define 'branchsuffix .feature_name'
+# for feature-branch builds.  When absent (main/release builds) the normal
+# release number is used and the resulting package will supersede any
+# pre-release feature-branch builds of the same Version.
+%if "%{?branchsuffix}" != ""
+%global _release 0.1%{branchsuffix}%{basesuffix}
+%else
+%global _release 1%{basesuffix}
+%endif
 
 Name:           open5g
 Version:        2.7.6
-Release:        %autorelease%{?customversion}
+Release:        %{_release}%{?dist}
 Summary:        Open Source Core Network for 5G
 
 License:        AGPL-3.0-or-later
@@ -591,6 +596,12 @@ fi
 %{_unitdir}/open5gs-upfd.service
 
 %changelog
+* Mon Mar 09 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-1.ringer
+- Switch to branch-aware versioning: feature-branch builds use 0.1.branchname
+  prefix so they sort below the merged release build
+- Replace custom autorelease macro with explicit Release field controlled by
+  optional branchsuffix define; use build.sh to set it automatically
+
 * Thu Sep 18 2025 Keith Milner <kamilner@sslconsult.com> - 2.7.6-1
 - Initial RPM packaging for Open5GS
 - Restructured to build individual packages for each service
