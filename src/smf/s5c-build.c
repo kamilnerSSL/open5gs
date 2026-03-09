@@ -140,7 +140,7 @@ ogs_pkbuf_t *smf_s5c_build_create_session_response(
     if (sess->gtp.ue_pco.presence &&
             sess->gtp.ue_pco.len && sess->gtp.ue_pco.data) {
         pco_len = smf_pco_build(
-                pco_buf, sess->gtp.ue_pco.data, sess->gtp.ue_pco.len);
+                pco_buf, sess->gtp.ue_pco.data, sess->gtp.ue_pco.len, sess);
         if (pco_len <= 0) {
             ogs_error("smf_pco_build() failed");
             ogs_log_hexdump(OGS_LOG_ERROR,
@@ -156,7 +156,7 @@ ogs_pkbuf_t *smf_s5c_build_create_session_response(
     if (sess->gtp.ue_apco.presence &&
             sess->gtp.ue_apco.len && sess->gtp.ue_apco.data) {
         apco_len = smf_pco_build(
-                apco_buf, sess->gtp.ue_apco.data, sess->gtp.ue_apco.len);
+                apco_buf, sess->gtp.ue_apco.data, sess->gtp.ue_apco.len, NULL);
         if (apco_len <= 0) {
             ogs_error("smf_pco_build() failed");
             ogs_log_hexdump(OGS_LOG_ERROR,
@@ -174,7 +174,7 @@ ogs_pkbuf_t *smf_s5c_build_create_session_response(
         epco_buf = ogs_calloc(OGS_MAX_EPCO_LEN, sizeof(uint8_t));
         ogs_assert(epco_buf);
         epco_len = smf_pco_build(
-                epco_buf, sess->gtp.ue_epco.data, sess->gtp.ue_epco.len);
+                epco_buf, sess->gtp.ue_epco.data, sess->gtp.ue_epco.len, sess);
         if (epco_len <= 0) {
             ogs_error("smf_pco_build() failed");
             ogs_log_hexdump(OGS_LOG_ERROR,
@@ -305,7 +305,7 @@ ogs_pkbuf_t *smf_s5c_build_delete_session_response(
     if (sess->gtp.ue_pco.presence &&
             sess->gtp.ue_pco.len && sess->gtp.ue_pco.data) {
         pco_len = smf_pco_build(
-                pco_buf, sess->gtp.ue_pco.data, sess->gtp.ue_pco.len);
+                pco_buf, sess->gtp.ue_pco.data, sess->gtp.ue_pco.len, sess);
         if (pco_len <= 0) {
             ogs_error("smf_pco_build() failed");
             ogs_log_hexdump(OGS_LOG_ERROR,
@@ -323,7 +323,7 @@ ogs_pkbuf_t *smf_s5c_build_delete_session_response(
         epco_buf = ogs_calloc(OGS_MAX_EPCO_LEN, sizeof(uint8_t));
         ogs_assert(epco_buf);
         epco_len = smf_pco_build(
-                epco_buf, sess->gtp.ue_epco.data, sess->gtp.ue_epco.len);
+                epco_buf, sess->gtp.ue_epco.data, sess->gtp.ue_epco.len, sess);
         if (epco_len <= 0) {
             ogs_error("smf_pco_build() failed");
             ogs_log_hexdump(OGS_LOG_ERROR,

@@ -3097,7 +3097,8 @@ static const uint8_t *ipcp_contains_option(
 #include "../version.h"
 static const char *pap_welcome = "Welcome to open5gs-smfd " OPEN5GS_VERSION;
 
-int smf_pco_build(uint8_t *pco_buf, uint8_t *buffer, int length)
+int smf_pco_build(uint8_t *pco_buf, uint8_t *buffer, int length,
+        smf_sess_t *sess)
 {
     int rv;
     ogs_pco_t ue, smf;

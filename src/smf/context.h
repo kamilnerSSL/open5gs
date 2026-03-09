@@ -609,6 +609,12 @@ typedef struct smf_sess_s {
         ogs_nas_extended_protocol_configuration_options_t ue_epco;
     } nas; /* Saved from NAS-5GS */
 
+    /* 3GPP PS Data Off (TS 24.008 10.5.6.3 / TS 23.060) */
+    struct {
+        bool present;   /* UE included PS Data Off container in PCO */
+        bool active;    /* true = PS Data Off activated by UE */
+    } ps_data_off;
+
     struct {
         ogs_pcc_rule_t  pcc_rule[OGS_MAX_NUM_OF_PCC_RULE];
         int             num_of_pcc_rule;
@@ -807,7 +813,8 @@ smf_pf_t *smf_pf_find_by_flow(
 smf_pf_t *smf_pf_first(smf_bearer_t *bearer);
 smf_pf_t *smf_pf_next(smf_pf_t *pf);
 
-int smf_pco_build(uint8_t *pco_buf, uint8_t *buffer, int length);
+int smf_pco_build(uint8_t *pco_buf, uint8_t *buffer, int length,
+        smf_sess_t *sess);
 
 void smf_qfi_pool_init(smf_sess_t *sess);
 void smf_qfi_pool_final(smf_sess_t *sess);

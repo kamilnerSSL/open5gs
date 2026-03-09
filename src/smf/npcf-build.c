@@ -265,6 +265,14 @@ ogs_sbi_request_t *smf_npcf_smpolicycontrol_build_create(
 
     SmPolicyContextData.subs_def_qos = &SubsDefQos;
 
+    if (OGS_SBI_FEATURES_IS_SET(sess->smpolicycontrol_features,
+                OGS_SBI_NPCF_SMPOLICYCONTROL_3GPP_PS_DATA_OFF) &&
+            sess->ps_data_off.present) {
+        SmPolicyContextData.is__3gpp_ps_data_off_status = true;
+        SmPolicyContextData._3gpp_ps_data_off_status =
+            sess->ps_data_off.active ? 1 : 0;
+    }
+
     if (sess->smpolicycontrol_features) {
         SmPolicyContextData.supp_feat =
             ogs_uint64_to_string(sess->smpolicycontrol_features);
