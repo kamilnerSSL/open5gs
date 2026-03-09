@@ -840,7 +840,7 @@ int ogs_pfcp_context_parse_config(const char *local, const char *remote)
                                 } while (
                                     ogs_yaml_iter_type(&range_iter) ==
                                     YAML_SEQUENCE_NODE);
-                            } else if (!strcmp(subnet_key, "accept")) {
+                            } else if (!strcmp(subnet_key, "aliases")) {
                                 ogs_yaml_iter_t accept_iter;
                                 ogs_yaml_iter_recurse(
                                         &subnet_iter, &accept_iter);

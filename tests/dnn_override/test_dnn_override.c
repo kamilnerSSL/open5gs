@@ -51,7 +51,7 @@ static void build_test_config(
         "  session:\n"
         "    - dnn: %s\n"
         "      subnet: 10.45.0.0/16\n"
-        "      accept:\n"
+        "      aliases:\n"
         "        - %s\n"
         "  dns:\n"
         "    - 8.8.8.8\n",
