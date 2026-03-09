@@ -3333,7 +3333,14 @@ int smf_pco_build(uint8_t *pco_buf, uint8_t *buffer, int length,
             /* TODO */
             break;
         case OGS_PCO_ID_3GPP_PS_DATA_OFF:
-            /* TODO */
+            /*
+             * The UE indicates its support for the 3GPP PS data off feature.
+             * The network does not include this PCO in the response.
+             * See 3GPP TS 24.008, section 10.5.6.3.
+             *
+             * This information should be stored in the session context.
+             */
+            ogs_debug("UE indicated support for 3GPP PS data off");
             break;
         default:
             ogs_warn("Unknown PCO ID:(0x%x)", ue.ids[i].id);
