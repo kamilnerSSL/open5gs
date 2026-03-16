@@ -17,7 +17,7 @@
 %endif
 
 Name:           open5g
-Version:        2.7.6
+Version:        2.7.7
 Release:        %{_release}%{?dist}
 Summary:        Open Source Core Network for 5G
 
