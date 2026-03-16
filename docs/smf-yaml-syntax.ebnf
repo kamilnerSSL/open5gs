@@ -1,0 +1,642 @@
+(* ============================================================
+   SMF YAML Configuration — EBNF Syntax Specification
+   Source: src/smf/context.c, lib/pfcp/context.c, lib/sbi/context.c
+   ============================================================
+
+   Notation:
+     =        definition
+     ,        concatenation
+     ;        termination
+     |        alternation
+     [ ... ]  optional (zero or one)
+     { ... }  repetition (zero or more)
+     ( ... )  grouping
+     " ... "  terminal string (YAML key or literal value)
+     (* ... *) comment
+
+   YAML structure conventions used here:
+     A "mapping" is a YAML object  { key: value }
+     A "sequence" is a YAML list   [ item, ... ]
+     "scalar" denotes a plain string/integer/boolean leaf value
+   ============================================================ *)
+
+
+(* ── Top-level document ───────────────────────────────────── *)
+
+smf_config
+    = { top_level_entry } ;
+
+top_level_entry
+    = logger_section
+    | global_section
+    | smf_section
+    ;
+
+
+(* ── logger ───────────────────────────────────────────────── *)
+
+logger_section
+    = "logger" ":" logger_body ;
+
+logger_body
+    = { logger_entry } ;
+
+logger_entry
+    = "file"  ":" logger_file_body
+    | "level" ":" log_level
+    ;
+
+logger_file_body
+    = { "path" ":" path_string } ;
+
+log_level
+    = "fatal" | "error" | "warn" | "info" | "debug" | "trace" ;
+
+
+(* ── global ───────────────────────────────────────────────── *)
+
+global_section
+    = "global" ":" global_body ;
+
+global_body
+    = { global_entry } ;
+
+global_entry
+    = "max" ":" max_body ;
+
+max_body
+    = { max_entry } ;
+
+max_entry
+    = "ue"   ":" positive_integer
+    | "peer" ":" positive_integer
+    ;
+
+
+(* ── smf (top-level NF section) ──────────────────────────── *)
+
+smf_section
+    = "smf" ":" smf_body ;
+
+smf_body
+    = { smf_entry } ;
+
+smf_entry
+    = "sbi"                  ":" sbi_body
+    | "default"              ":" default_body
+    | "pfcp"                 ":" pfcp_body
+    | "gtpc"                 ":" gtp_body
+    | "gtpu"                 ":" gtp_body
+    | "metrics"              ":" metrics_body
+    | "session"              ":" session_list
+    | "dns"                  ":" dns_list
+    | "mtu"                  ":" positive_integer
+    | "p-cscf"               ":" p_cscf_list
+    | "ctf"                  ":" ctf_body
+    | "freeDiameter"         ":" free_diameter_value
+    | "info"                 ":" info_list
+    | "security_indication"  ":" security_indication_body
+    | "nrf"                  ":" nrf_scp_list         (* shorthand *)
+    | "scp"                  ":" nrf_scp_list         (* shorthand *)
+    | "service_name"         ":" service_name_list
+    | "discovery"            ":" discovery_body
+    ;
+
+
+(* ── sbi ──────────────────────────────────────────────────── *)
+
+sbi_body
+    = { sbi_entry } ;
+
+sbi_entry
+    = "server" ":" sbi_server_list
+    | "client" ":" sbi_client_body
+    ;
+
+sbi_server_list
+    = sbi_server_item
+    | { sbi_server_item }
+    ;
+
+sbi_server_item
+    = { sbi_server_field } ;
+
+sbi_server_field
+    = "address"   ":" host_string
+    | "port"      ":" port_number
+    | "dev"       ":" interface_name
+    | "advertise" ":" advertise_string
+    ;
+
+(* advertise_string is a hostname optionally followed by ":port" *)
+advertise_string
+    = host_string [ ":" port_number ] ;
+
+sbi_client_body
+    = { sbi_client_entry } ;
+
+sbi_client_entry
+    = "nrf"       ":" nrf_scp_list
+    | "scp"       ":" nrf_scp_list
+    | "delegated" ":" delegated_body
+    ;
+
+nrf_scp_list
+    = nrf_scp_item
+    | { nrf_scp_item }
+    ;
+
+nrf_scp_item
+    = { "uri" ":" uri_string } ;
+
+delegated_body
+    = { delegated_entry } ;
+
+delegated_entry
+    = "nrf" ":" delegated_nrf_body
+    | "scp" ":" delegated_scp_body
+    ;
+
+delegated_nrf_body
+    = { delegated_nrf_field } ;
+
+delegated_nrf_field
+    = "nfm"  ":" bool_value
+    | "disc" ":" bool_value
+    ;
+
+delegated_scp_body
+    = { "next" ":" bool_value } ;
+
+
+(* ── default (TLS) ───────────────────────────────────────── *)
+
+default_body
+    = { "tls" ":" tls_body } ;
+
+tls_body
+    = { tls_entry } ;
+
+tls_entry
+    = "server" ":" tls_server_body
+    | "client" ":" tls_client_body
+    ;
+
+tls_server_body
+    = { tls_server_field } ;
+
+tls_server_field
+    = "scheme"               ":" http_scheme
+    | "private_key"          ":" path_string
+    | "cert"                 ":" path_string
+    | "verify_client"        ":" bool_value
+    | "verify_client_cacert" ":" path_string
+    | "sslkeylogfile"        ":" path_string
+    ;
+
+tls_client_body
+    = { tls_client_field } ;
+
+tls_client_field
+    = "scheme"                ":" http_scheme
+    | "cacert"                ":" path_string
+    | "client_private_key"    ":" path_string
+    | "client_cert"           ":" path_string
+    | "client_sslkeylogfile"  ":" path_string
+    ;
+
+http_scheme
+    = "http" | "https" ;
+
+
+(* ── pfcp ─────────────────────────────────────────────────── *)
+
+pfcp_body
+    = { pfcp_entry } ;
+
+pfcp_entry
+    = "server" ":" pfcp_server_list
+    | "client" ":" pfcp_client_body
+    ;
+
+pfcp_server_list
+    = pfcp_server_item
+    | { pfcp_server_item }
+    ;
+
+pfcp_server_item
+    = { pfcp_server_field } ;
+
+pfcp_server_field
+    = "address"   ":" host_string
+    | "port"      ":" port_number
+    | "dev"       ":" interface_name
+    | "advertise" ":" host_string
+    | "family"    ":" address_family
+    | "option"    ":" sockopt_body
+    ;
+
+pfcp_client_body
+    = { "upf" ":" upf_list } ;
+
+upf_list
+    = upf_item
+    | { upf_item }
+    ;
+
+upf_item
+    = { upf_field } ;
+
+upf_field
+    = "address"    ":" host_string
+    | "port"       ":" port_number
+    | "family"     ":" address_family
+    | "tac"        ":" ( positive_integer | integer_list )
+    | "dnn"        ":" ( dnn_name | string_list )
+    | "apn"        ":" ( dnn_name | string_list )   (* alias for dnn *)
+    | "e_cell_id"  ":" ( hex_integer | hex_integer_list )
+    | "nr_cell_id" ":" ( hex_integer | hex_integer_list )
+    ;
+
+sockopt_body
+    = { sockopt_field } ;
+
+sockopt_field
+    = string_value ":" scalar_value ;   (* pass-through to OS socket options *)
+
+
+(* ── gtpc / gtpu (shared gtp_body rule) ──────────────────── *)
+
+gtp_body
+    = { "server" ":" gtp_server_list } ;
+
+gtp_server_list
+    = gtp_server_item
+    | { gtp_server_item }
+    ;
+
+gtp_server_item
+    = { gtp_server_field } ;
+
+gtp_server_field
+    = "address" ":" host_string
+    | "port"    ":" port_number
+    | "dev"     ":" interface_name
+    ;
+
+
+(* ── metrics ─────────────────────────────────────────────── *)
+
+metrics_body
+    = { "server" ":" metrics_server_list } ;
+
+metrics_server_list
+    = metrics_server_item
+    | { metrics_server_item }
+    ;
+
+metrics_server_item
+    = { metrics_server_field } ;
+
+metrics_server_field
+    = "address" ":" host_string
+    | "port"    ":" port_number
+    ;
+
+
+(* ── session (UE IP pool) ────────────────────────────────── *)
+
+session_list
+    = session_item
+    | { session_item }
+    ;
+
+session_item
+    = { session_field } ;
+
+session_field
+    = "subnet"  ":" cidr_string
+    | "gateway" ":" ip_address
+    | "dnn"     ":" dnn_name
+    | "apn"     ":" dnn_name        (* alias for dnn *)
+    | "dev"     ":" interface_name
+    | "range"   ":" range_list
+    ;
+
+range_list
+    = range_string
+    | { range_string }
+    ;
+
+(* range_string formats: "start-end" | "start-" | "-end" *)
+range_string
+    = ip_address "-" ip_address
+    | ip_address "-"
+    | "-" ip_address
+    ;
+
+
+(* ── dns ─────────────────────────────────────────────────── *)
+
+(* Maximum 2 IPv4 and 2 IPv6 entries; additional entries are silently dropped *)
+dns_list
+    = ip_address
+    | { ip_address }
+    ;
+
+
+(* ── p-cscf ──────────────────────────────────────────────── *)
+
+p_cscf_list
+    = p_cscf_entry
+    | { p_cscf_entry }
+    ;
+
+(* Each entry is an IPv4 address, IPv6 address, or FQDN resolved at startup *)
+p_cscf_entry
+    = ip_address | fqdn ;
+
+
+(* ── ctf ─────────────────────────────────────────────────── *)
+
+ctf_body
+    = { "enabled" ":" ctf_enabled_value } ;
+
+ctf_enabled_value
+    = "auto"    (* enable if freeDiameter is configured — default *)
+    | "yes"     (* always enable *)
+    | "no"      (* always disable *)
+    ;
+
+
+(* ── freeDiameter ────────────────────────────────────────── *)
+
+free_diameter_value
+    = path_string              (* simple form: path to .conf file *)
+    | free_diameter_body       (* expanded inline form *)
+    ;
+
+free_diameter_body
+    = { free_diameter_field } ;
+
+free_diameter_field
+    = "identity"       ":" fqdn
+    | "realm"          ":" fqdn
+    | "port"           ":" port_number
+    | "sec_port"       ":" port_number
+    | "listen_on"      ":" ip_address
+    | "no_fwd"         ":" bool_value
+    | "tc_timer"       ":" positive_integer
+    | "load_extension" ":" fd_extension_list
+    | "connect"        ":" fd_connect_list
+    ;
+
+fd_extension_list
+    = fd_extension_item
+    | { fd_extension_item }
+    ;
+
+fd_extension_item
+    = { fd_extension_field } ;
+
+fd_extension_field
+    = "module" ":" path_string
+    | "conf"   ":" path_string
+    ;
+
+fd_connect_list
+    = fd_connect_item
+    | { fd_connect_item }
+    ;
+
+fd_connect_item
+    = { fd_connect_field } ;
+
+fd_connect_field
+    = "identity" ":" fqdn
+    | "address"  ":" ip_address
+    | "port"     ":" port_number
+    | "tc_timer" ":" positive_integer
+    ;
+
+
+(* ── info (SMF NF selection info for NRF) ────────────────── *)
+
+info_list
+    = info_item
+    | { info_item }
+    ;
+
+info_item
+    = { info_field } ;
+
+info_field
+    = "s_nssai" ":" s_nssai_list
+    | "tai"     ":" tai_list
+    ;
+
+s_nssai_list
+    = s_nssai_item
+    | { s_nssai_item }
+    ;
+
+s_nssai_item
+    = { s_nssai_field } ;
+
+s_nssai_field
+    = "sst" ":" sst_value
+    | "sd"  ":" sd_value
+    | "dnn" ":" ( dnn_name | dnn_name_list )
+    ;
+
+sst_value
+    = positive_integer ;    (* 1–255 *)
+
+sd_value
+    = hex_string_6 ;        (* 6 hex digits, e.g. "009000"; omit for no-SD *)
+
+dnn_name_list
+    = { dnn_name } ;
+
+tai_list
+    = tai_item
+    | { tai_item }
+    ;
+
+tai_item
+    = { tai_field } ;
+
+tai_field
+    = "plmn_id" ":" plmn_id_body
+    | "tac"     ":" tac_value
+    ;
+
+plmn_id_body
+    = { plmn_id_field } ;
+
+plmn_id_field
+    = "mcc" ":" mcc_value
+    | "mnc" ":" mnc_value
+    ;
+
+(* tac may be a single value, a list, or a list mixing values and range strings *)
+tac_value
+    = positive_integer
+    | integer_list
+    | tac_range_list
+    ;
+
+tac_range_list
+    = { tac_range_entry } ;
+
+tac_range_entry
+    = positive_integer              (* single TAC *)
+    | tac_range_string              (* "low-high" range string *)
+    ;
+
+(* "10-20" means TAC 10 through 20 inclusive *)
+tac_range_string
+    = positive_integer "-" positive_integer ;
+
+
+(* ── security_indication ─────────────────────────────────── *)
+
+security_indication_body
+    = { security_indication_field } ;
+
+security_indication_field
+    = "integrity_protection_indication"              ":" protection_indication
+    | "confidentiality_protection_indication"        ":" protection_indication
+    | "maximum_integrity_protected_data_rate_uplink" ":" data_rate_value
+    | "maximum_integrity_protected_data_rate_downlink" ":" data_rate_value
+    ;
+
+protection_indication
+    = "required"
+    | "preferred"
+    | "not-needed"
+    ;
+
+data_rate_value
+    = "bitrate64kbs"
+    | "maximum-UE-rate"
+    ;
+
+
+(* ── service_name ─────────────────────────────────────────── *)
+
+service_name_list
+    = service_name_string
+    | { service_name_string }
+    ;
+
+service_name_string
+    = string_value ;    (* e.g. "nsmf-pdusession", "nsmf-event-exposure" *)
+
+
+(* ── discovery ───────────────────────────────────────────── *)
+
+discovery_body
+    = { "option" ":" discovery_option_body } ;
+
+discovery_option_body
+    = { "no_delegation" ":" bool_value } ;
+
+
+(* ── Primitive / shared terminals ────────────────────────── *)
+
+address_family
+    = "2"           (* AF_INET  — IPv4 only *)
+    | "10"          (* AF_INET6 — IPv6 only *)
+    ;
+
+bool_value
+    = "true" | "false" | "yes" | "no" ;
+
+cidr_string
+    = ip_address "/" positive_integer ;
+    (* e.g. "10.45.0.0/16" or "2001:db8:cafe::/48" *)
+
+host_string
+    = ip_address | fqdn ;
+
+ip_address
+    = ipv4_address | ipv6_address ;
+
+ipv4_address
+    = digit+ "." digit+ "." digit+ "." digit+ ;
+
+ipv6_address
+    = (* standard IPv6 notation including "::" compression *) ;
+
+fqdn
+    = label { "." label } ;
+
+label
+    = ( letter | digit ) { letter | digit | "-" } ;
+
+uri_string
+    = http_scheme "://" host_string [ ":" port_number ] [ "/" { any_char } ] ;
+
+port_number
+    = digit { digit } ;     (* 1–65535 *)
+
+positive_integer
+    = non_zero_digit { digit } ;
+
+hex_integer
+    = digit { hex_digit } ;
+
+hex_string_6
+    = hex_digit hex_digit hex_digit hex_digit hex_digit hex_digit ;
+
+integer_list
+    = "[" positive_integer { "," positive_integer } "]" ;
+
+hex_integer_list
+    = "[" hex_integer { "," hex_integer } "]" ;
+
+string_list
+    = "[" string_value { "," string_value } "]" ;
+
+dnn_name
+    = string_value ;    (* e.g. "internet", "ims"; no whitespace *)
+
+interface_name
+    = string_value ;    (* e.g. "eth0", "ogstun" *)
+
+path_string
+    = string_value ;    (* absolute filesystem path *)
+
+mcc_value
+    = digit digit digit ;           (* 3 decimal digits *)
+
+mnc_value
+    = digit digit [ digit ] ;      (* 2 or 3 decimal digits *)
+
+scalar_value
+    = string_value | positive_integer | bool_value ;
+
+string_value
+    = ? any sequence of printable characters ? ;
+
+digit
+    = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
+
+non_zero_digit
+    = "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
+
+hex_digit
+    = digit | "a" | "b" | "c" | "d" | "e" | "f"
+            | "A" | "B" | "C" | "D" | "E" | "F" ;
+
+letter
+    = "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j"
+    | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" | "s" | "t"
+    | "u" | "v" | "w" | "x" | "y" | "z"
+    | "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J"
+    | "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R" | "S" | "T"
+    | "U" | "V" | "W" | "X" | "Y" | "Z" ;
+
+any_char
+    = ? any printable ASCII character ? ;
