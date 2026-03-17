@@ -136,11 +136,21 @@ ogs_pkbuf_t *smf_s5c_build_create_session_response(
         rsp->aggregate_maximum_bit_rate.len = sizeof(ambr);
     }
 
+    /* Determine if P-CSCF should be forced for this DNN */
+    bool force_pcscf = false;
+    {
+        ogs_pfcp_subnet_t *subnet = ogs_pfcp_find_subnet_by_dnn(
+                AF_INET, sess->session.name);
+        if (subnet)
+            force_pcscf = subnet->force_pcscf;
+    }
+
     /* PCO */
     if (sess->gtp.ue_pco.presence &&
             sess->gtp.ue_pco.len && sess->gtp.ue_pco.data) {
         pco_len = smf_pco_build(
-                pco_buf, sess->gtp.ue_pco.data, sess->gtp.ue_pco.len);
+                pco_buf, sess->gtp.ue_pco.data, sess->gtp.ue_pco.len,
+                force_pcscf);
         if (pco_len <= 0) {
             ogs_error("smf_pco_build() failed");
             ogs_log_hexdump(OGS_LOG_ERROR,
@@ -150,13 +160,41 @@ ogs_pkbuf_t *smf_s5c_build_create_session_response(
         rsp->protocol_configuration_options.presence = 1;
         rsp->protocol_configuration_options.data = pco_buf;
         rsp->protocol_configuration_options.len = pco_len;
+    } else if (force_pcscf && smf_self()->num_of_p_cscf) {
+        /* No UE PCO, but force_pcscf is set: build a PCO with P-CSCF only */
+        ogs_pco_t forced_pco;
+        ogs_ipsubnet_t p_cscf;
+
+        memset(&forced_pco, 0, sizeof(forced_pco));
+        forced_pco.ext = 1;
+        forced_pco.configuration_protocol = 0;
+
+        rv = ogs_ipsubnet(&p_cscf,
+                smf_self()->p_cscf[smf_self()->p_cscf_index], NULL);
+        if (rv == OGS_OK) {
+            forced_pco.ids[0].id = OGS_PCO_ID_P_CSCF_IPV4_ADDRESS_REQUEST;
+            forced_pco.ids[0].len = OGS_IPV4_LEN;
+            forced_pco.ids[0].data = p_cscf.sub;
+            forced_pco.num_of_id = 1;
+
+            smf_self()->p_cscf_index++;
+            smf_self()->p_cscf_index %= smf_self()->num_of_p_cscf;
+
+            pco_len = ogs_pco_build(pco_buf, OGS_MAX_PCO_LEN, &forced_pco);
+            if (pco_len > 0) {
+                rsp->protocol_configuration_options.presence = 1;
+                rsp->protocol_configuration_options.data = pco_buf;
+                rsp->protocol_configuration_options.len = pco_len;
+            }
+        }
     }
 
     /* APCO */
     if (sess->gtp.ue_apco.presence &&
             sess->gtp.ue_apco.len && sess->gtp.ue_apco.data) {
         apco_len = smf_pco_build(
-                apco_buf, sess->gtp.ue_apco.data, sess->gtp.ue_apco.len);
+                apco_buf, sess->gtp.ue_apco.data, sess->gtp.ue_apco.len,
+                false);
         if (apco_len <= 0) {
             ogs_error("smf_pco_build() failed");
             ogs_log_hexdump(OGS_LOG_ERROR,
@@ -174,7 +212,8 @@ ogs_pkbuf_t *smf_s5c_build_create_session_response(
         epco_buf = ogs_calloc(OGS_MAX_EPCO_LEN, sizeof(uint8_t));
         ogs_assert(epco_buf);
         epco_len = smf_pco_build(
-                epco_buf, sess->gtp.ue_epco.data, sess->gtp.ue_epco.len);
+                epco_buf, sess->gtp.ue_epco.data, sess->gtp.ue_epco.len,
+                false);
         if (epco_len <= 0) {
             ogs_error("smf_pco_build() failed");
             ogs_log_hexdump(OGS_LOG_ERROR,
@@ -305,7 +344,7 @@ ogs_pkbuf_t *smf_s5c_build_delete_session_response(
     if (sess->gtp.ue_pco.presence &&
             sess->gtp.ue_pco.len && sess->gtp.ue_pco.data) {
         pco_len = smf_pco_build(
-                pco_buf, sess->gtp.ue_pco.data, sess->gtp.ue_pco.len);
+                pco_buf, sess->gtp.ue_pco.data, sess->gtp.ue_pco.len, false);
         if (pco_len <= 0) {
             ogs_error("smf_pco_build() failed");
             ogs_log_hexdump(OGS_LOG_ERROR,
@@ -323,7 +362,8 @@ ogs_pkbuf_t *smf_s5c_build_delete_session_response(
         epco_buf = ogs_calloc(OGS_MAX_EPCO_LEN, sizeof(uint8_t));
         ogs_assert(epco_buf);
         epco_len = smf_pco_build(
-                epco_buf, sess->gtp.ue_epco.data, sess->gtp.ue_epco.len);
+                epco_buf, sess->gtp.ue_epco.data, sess->gtp.ue_epco.len,
+                false);
         if (epco_len <= 0) {
             ogs_error("smf_pco_build() failed");
             ogs_log_hexdump(OGS_LOG_ERROR,

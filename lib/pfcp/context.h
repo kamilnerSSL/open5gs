@@ -379,6 +379,8 @@ typedef struct ogs_pfcp_subnet_s {
     uint8_t         prefixlen;      /* prefixlen */
     OGS_POOL(pool, ogs_pfcp_ue_ip_t);
 
+    bool            force_pcscf;    /* Force P-CSCF IPv4 in Create Session Response */
+
     ogs_pfcp_dev_t  *dev;           /* Related Context */
 } ogs_pfcp_subnet_t;
 
