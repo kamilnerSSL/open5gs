@@ -676,6 +676,7 @@ int ogs_fqdn_parse(char *dst, const char *src, int len);
 #define OGS_PCO_ID_IPV4_LINK_MTU_REQUEST                        0x0010
 #define OGS_PCO_ID_MS_SUPPORT_LOCAL_ADDR_TFT_INDICATOR          0x0011
 #define OGS_PCO_ID_P_CSCF_RE_SELECTION_SUPPORT                  0x0012
+#define OGS_PCO_ID_3GPP_PS_DATA_OFF                             0x0017
 
 enum ogs_pco_ipcp_options {
     OGS_IPCP_OPT_IPADDR = 3,
