@@ -3095,7 +3095,8 @@ static const uint8_t *ipcp_contains_option(
 #include "../version.h"
 static const char *pap_welcome = "Welcome to open5gs-smfd " OPEN5GS_VERSION;
 
-int smf_pco_build(uint8_t *pco_buf, uint8_t *buffer, int length)
+int smf_pco_build(uint8_t *pco_buf, uint8_t *buffer, int length,
+        smf_sess_t *sess)
 {
     int rv;
     ogs_pco_t ue, smf;
@@ -3330,7 +3331,15 @@ int smf_pco_build(uint8_t *pco_buf, uint8_t *buffer, int length)
             /* TODO */
             break;
         case OGS_PCO_ID_3GPP_PS_DATA_OFF:
-            /* TODO */
+            /*
+             * The UE indicates its support for the 3GPP PS data off feature.
+             * The network does not include this PCO in the response.
+             * See 3GPP TS 24.008, section 10.5.6.3.
+             *
+             * The capability is parsed in the message handlers and stored
+             * in the session context.
+             */
+            ogs_debug("UE indicated support for 3GPP PS data off, not adding to response PCO");
             break;
         default:
             ogs_warn("Unknown PCO ID:(0x%x)", ue.ids[i].id);

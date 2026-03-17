@@ -89,6 +89,21 @@ int gsm_handle_pdu_session_establishment_request(
         OGS_NAS_STORE_DATA(&sess->nas.ue_epco,
             &pdu_session_establishment_request->
                 extended_protocol_configuration_options);
+
+        if (sess->nas.ue_epco.buffer && sess->nas.ue_epco.length) {
+            ogs_pco_t pco;
+            int i;
+            if (ogs_pco_parse(&pco, sess->nas.ue_epco.buffer,
+                        sess->nas.ue_epco.length) > 0) {
+                for (i = 0; i < pco.num_of_id; i++) {
+                    if (pco.ids[i].id == OGS_PCO_ID_3GPP_PS_DATA_OFF) {
+                        sess->ps_data_off.present = true;
+                        ogs_debug("UE supports 3GPP PS data off");
+                        break;
+                    }
+                }
+            }
+        }
     }
 
     r = smf_sbi_discover_and_send(OGS_SBI_SERVICE_TYPE_NUDM_SDM, NULL,
