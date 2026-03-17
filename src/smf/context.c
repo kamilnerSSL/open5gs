@@ -52,9 +52,6 @@ int smf_ctf_config_init(smf_ctf_config_t *ctf_config)
 int smf_use_gy_iface(void)
 {
     switch (smf_self()->ctf_config.enabled) {
-    case SMF_CTF_ENABLED_AUTO:
-        return ogs_diam_is_relay_or_app_advertised(
-                OGS_DIAM_GY_APPLICATION_ID) ? 1 : 0;
     case SMF_CTF_ENABLED_YES:
         return ogs_diam_is_relay_or_app_advertised(
                 OGS_DIAM_GY_APPLICATION_ID) ? 1 : -1;
@@ -491,10 +488,11 @@ int smf_context_parse_config(void)
                             ogs_assert(ctf_node->type == YAML_SCALAR_NODE);
                             const char* enabled =
                                 ogs_yaml_iter_value(&ctf_iter);
-                            if (!strcmp(enabled, "auto"))
-                                self.ctf_config.enabled = SMF_CTF_ENABLED_AUTO;
-                            else if (!strcmp(enabled, "yes"))
+                            if (!strcmp(enabled, "yes") || !strcmp(enabled, "auto")) {
+                                if (!strcmp(enabled, "auto"))
+                                    ogs_warn("The 'auto' value for 'smf.ctf.enabled' is deprecated and now treated as 'yes'. Please update your configuration.");
                                 self.ctf_config.enabled = SMF_CTF_ENABLED_YES;
+                            }
                             else if (!strcmp(enabled, "no"))
                                 self.ctf_config.enabled = SMF_CTF_ENABLED_NO;
                             else

@@ -53,7 +53,7 @@ extern int __gsm_log_domain;
 #define OGS_LOG_DOMAIN __smf_log_domain
 
 typedef enum {
-    SMF_CTF_ENABLED_AUTO = 0,
+    SMF_CTF_ENABLED_AUTO = 0, /* deprecated: config "auto" is now treated as "yes" */
     SMF_CTF_ENABLED_YES,
     SMF_CTF_ENABLED_NO,
 } smf_ctf_enabled_mode_e;
@@ -300,6 +300,8 @@ typedef struct smf_sess_s {
         bool s6b_str_in_flight; /* Waiting for S6B CCA */
         uint32_t s6b_sta_err; /* S6B CCA RXed error code */
     } sm_data;
+
+    bool            gy_enabled;     /**< PCRF indicated online charging (Gx Online AVP) */
 
     bool            epc;            /**< EPC or 5GC */
 

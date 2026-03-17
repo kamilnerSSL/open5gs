@@ -44,6 +44,7 @@ extern "C" {
 #define OGS_DIAM_GX_AVP_CODE_QOS_INFORMATION                (1016)
 #define OGS_DIAM_GX_AVP_CODE_PRECEDENCE                     (1010)
 #define OGS_DIAM_GX_AVP_CODE_RATING_GROUP                   (432)
+#define OGS_DIAM_GX_AVP_CODE_ONLINE                         (1009)
 
 extern struct dict_object *ogs_diam_gx_application;
 
@@ -150,6 +151,8 @@ typedef struct ogs_diam_gx_message_s {
 #define OGS_DIAM_GX_CC_REQUEST_TYPE_TERMINATION_REQUEST             3
 #define OGS_DIAM_GX_CC_REQUEST_TYPE_EVENT_REQUEST                   4
     uint32_t            cc_request_type;
+
+    uint32_t            online; /* Online AVP: OGS_DIAM_GX_ENABLE_ONLINE / DISABLE_ONLINE */
 
     ogs_session_data_t  session_data;
 } ogs_diam_gx_message_t;
