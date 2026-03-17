@@ -590,14 +590,23 @@ fi
 - Bump to 2.7.7
 - Simplify Release field to a plain revision number; remove branch-aware
   versioning and branchsuffix/buildnum logic
+- Adjust Gx test in s5c-handler to support testing
+- Adds dnn override tests
+- Adds dnn override configuration option & testing
+- Move APN override to after UPF selection
+- Fixes encoding of override APN & some logging message changes
+- Merge in upstream changes and fix dnn override
+- Fixes for incorrect DNN matching and response
+- Support for multiple DNNs in SMF
+- Updates to prevent crashing
+- Adds ability to accept multiple DNNs and rewrite to primary in response
+- Adds debugging for SMF and small fix for AMBR setting
 
 * Mon Mar 09 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-2
 - Switch to branch-aware versioning: feature-branch builds use 0.1.branchname
   prefix so they sort below the merged release build
 - Replace custom autorelease macro with explicit Release field controlled by
   optional branchsuffix define; use build.sh to set it automatically
-* Thu Feb 12 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-2
-- Adds debugging for SMF and small fix for AMBR setting
 * Thu Sep 18 2025 Keith Milner <kamilner@sslconsult.com> - 2.7.6-1
 - Initial RPM packaging for Open5GS
 - Restructured to build individual packages for each service

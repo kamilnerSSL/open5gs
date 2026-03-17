@@ -95,6 +95,7 @@ uint8_t smf_s5c_handle_create_session_request(
     char buf1[OGS_ADDRSTRLEN];
     char buf2[OGS_ADDRSTRLEN];
 
+    char original_apn[OGS_MAX_APN_LEN + 1] = {0};
     int i, rv;
     int bearer_count;
     uint8_t cause_value = 0;
@@ -114,6 +115,7 @@ uint8_t smf_s5c_handle_create_session_request(
     ogs_assert(xact);
     ogs_assert(req);
 
+    ogs_cpystrn(original_apn, sess->session.name, sizeof(original_apn));
     ogs_debug("Create Session Request");
 
     cause_value = OGS_GTP2_CAUSE_REQUEST_ACCEPTED;
@@ -155,7 +157,8 @@ uint8_t smf_s5c_handle_create_session_request(
                 req->serving_network.len);
         cause_value = OGS_GTP2_CAUSE_CONDITIONAL_IE_MISSING;
     }
-    
+
+
     switch (sess->gtp_rat_type) {
     case OGS_GTP2_RAT_TYPE_EUTRAN:
         if (req->bearer_contexts_to_be_created[0].
@@ -255,22 +258,6 @@ uint8_t smf_s5c_handle_create_session_request(
     /* Serving Network */
     ogs_nas_to_plmn_id(&sess->serving_plmn_id, req->serving_network.data);
 
-    /* Select PGW based on UE Location Information */
-    smf_sess_select_upf(sess);
-
-    if (!sess->pfcp_node) {
-        ogs_error("[%s:%s] No UPF available for session",
-                  smf_ue->imsi_bcd, sess->session.name);
-        return OGS_GTP2_CAUSE_SYSTEM_FAILURE;
-    }
-
-    /* Check if selected PGW is associated with SMF */
-    if (!OGS_FSM_CHECK(&sess->pfcp_node->sm, smf_pfcp_state_associated)) {
-        ogs_error("[%s:%s] selected UPF is not assocated with SMF",
-                  smf_ue->imsi_bcd, sess->session.name);
-        return OGS_GTP2_CAUSE_REMOTE_PEER_NOT_RESPONDING;
-    }
-
     /* UE IP Address */
     paa = req->pdn_address_allocation.data;
     ogs_assert(paa);
@@ -286,33 +273,57 @@ uint8_t smf_s5c_handle_create_session_request(
     /* Set UE IP Address */
     rv = smf_sess_set_ue_ip(sess);
     if (rv != OGS_PFCP_CAUSE_REQUEST_ACCEPTED) {
-        /* only two possibilities are:
-         * OGS_PFCP_CAUSE_ALL_DYNAMIC_ADDRESS_ARE_OCCUPIED
-         * OGS_PFCP_CAUSE_NO_RESOURCES_AVAILABLE
-         */
-        ogs_error("Failed to set UE IP Address");
+        ogs_error("Failed to set UE IP Address, cause: %d", rv);
         switch(rv) {
         case OGS_PFCP_CAUSE_ALL_DYNAMIC_ADDRESS_ARE_OCCUPIED:
-            cause_value = OGS_GTP2_CAUSE_ALL_DYNAMIC_ADDRESSES_ARE_OCCUPIED;
-            break;
+            return OGS_GTP2_CAUSE_ALL_DYNAMIC_ADDRESSES_ARE_OCCUPIED;
         case OGS_PFCP_CAUSE_NO_RESOURCES_AVAILABLE:
-            cause_value = OGS_GTP2_CAUSE_NO_RESOURCES_AVAILABLE;
-            break;
+            return OGS_GTP2_CAUSE_NO_RESOURCES_AVAILABLE;
         default:
-            cause_value = OGS_GTP2_CAUSE_REQUEST_REJECTED_REASON_NOT_SPECIFIED;
-            break;
+            return OGS_GTP2_CAUSE_REQUEST_REJECTED_REASON_NOT_SPECIFIED;
         }
-        return cause_value;
+    }
+
+    /*
+     * If the DNN was overridden, the matched subnet will have the
+     * canonical DNN. Let's update the session with it.
+     * Guard against pfcp_subnet being NULL (e.g. if smf_sess_set_ue_ip
+     * succeeded but left the pointer unset for an unexpected session type).
+     */
+    if (sess->pfcp_subnet &&
+            sess->pfcp_subnet->dnn_override &&
+            strcmp(original_apn, sess->pfcp_subnet->dnn) != 0) {
+        ogs_info("DNN override: original [%s], new [%s]",
+                original_apn, sess->pfcp_subnet->dnn);
+        ogs_free(sess->session.name);
+        sess->session.name = ogs_strdup(sess->pfcp_subnet->dnn);
+        ogs_assert(sess->session.name);
     }
 
     /* Gx peer must be available before the session can proceed further.
-     * This check is placed after DNN/subnet resolution so that unit
-     * tests can be performed without a live Diameter peer. */
+     * This check is placed after DNN/subnet resolution so that the canonical
+     * DNN is already set when the error response is sent and so that unit
+     * tests can verify DNN override without a live Diameter peer. */
     if (!ogs_diam_is_relay_or_app_advertised(OGS_DIAM_GX_APPLICATION_ID)) {
         ogs_error("No Gx Diameter Peer");
         return OGS_GTP2_CAUSE_REMOTE_PEER_NOT_RESPONDING;
     }
 
+    /* Select UPF based on UE Location Information and original APN */
+    smf_sess_select_upf(sess);
+
+    if (!sess->pfcp_node) {
+        ogs_error("[%s:%s] No UPF available for session",
+                  smf_ue->imsi_bcd, sess->session.name);
+        return OGS_GTP2_CAUSE_SYSTEM_FAILURE;
+    }
+
+    /* Check if selected UPF is associated with SMF */
+    if (!OGS_FSM_CHECK(&sess->pfcp_node->sm, smf_pfcp_state_associated)) {
+        ogs_error("[%s:%s] selected UPF is not assocated with SMF",
+                  smf_ue->imsi_bcd, sess->session.name);
+        return OGS_GTP2_CAUSE_REMOTE_PEER_NOT_RESPONDING;
+    }
     ogs_info("UE IMSI[%s] APN[%s] IPv4[%s] IPv6[%s]",
         smf_ue->imsi_bcd,
         sess->session.name,

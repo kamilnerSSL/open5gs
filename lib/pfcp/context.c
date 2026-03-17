@@ -763,6 +763,10 @@ int ogs_pfcp_context_parse_config(const char *local, const char *remote)
                         const char *dev = self.tun_ifname;
                         const char *low[OGS_MAX_NUM_OF_SUBNET_RANGE];
                         const char *high[OGS_MAX_NUM_OF_SUBNET_RANGE];
+                        const char* accept[OGS_MAX_NUM_OF_ACCEPTED_DNN];
+                        int num_of_accept = 0;
+                        bool dnn_override = true;
+
                         int i, num = 0;
 
                         memset(low, 0, sizeof(low));
@@ -837,6 +841,36 @@ int ogs_pfcp_context_parse_config(const char *local, const char *remote)
                                 } while (
                                     ogs_yaml_iter_type(&range_iter) ==
                                     YAML_SEQUENCE_NODE);
+                            } else if (!strcmp(subnet_key, "override")) {
+                                const char *v =
+                                    ogs_yaml_iter_value(&subnet_iter);
+                                if (v) dnn_override =
+                                    (strcmp(v, "false") != 0 &&
+                                     strcmp(v, "no") != 0 &&
+                                     strcmp(v, "0") != 0);
+                            } else if (!strcmp(subnet_key, "aliases")) {
+                                ogs_yaml_iter_t accept_iter;
+                                ogs_yaml_iter_recurse(
+                                        &subnet_iter, &accept_iter);
+                                ogs_assert(ogs_yaml_iter_type(&accept_iter) !=
+                                    YAML_MAPPING_NODE);
+                                do {
+                                    if (ogs_yaml_iter_type(&accept_iter) ==
+                                            YAML_SEQUENCE_NODE) {
+                                        if (!ogs_yaml_iter_next(&accept_iter))
+                                            break;
+                                    }
+
+                                    const char *v =
+                                        ogs_yaml_iter_value(&accept_iter);
+                                    if (v && num_of_accept < OGS_MAX_NUM_OF_ACCEPTED_DNN) {
+                                        accept[num_of_accept++] = v;
+                                    } else if (v) {
+                                        ogs_warn("Exceeded maximum number of accepted DNNs");
+                                    }
+                                } while (
+                                    ogs_yaml_iter_type(&accept_iter) ==
+                                    YAML_SEQUENCE_NODE);
                             } else
                                 ogs_warn("unknown key `%s`", subnet_key);
                         }
@@ -850,6 +884,12 @@ int ogs_pfcp_context_parse_config(const char *local, const char *remote)
                             subnet->range[i].low = low[i];
                             subnet->range[i].high = high[i];
                         }
+
+                        subnet->num_of_accept = num_of_accept;
+                        for (i = 0; i < subnet->num_of_accept; i++) {
+                            subnet->accept[i] = accept[i];
+                        }
+                        subnet->dnn_override = dnn_override;
 
                     } while (ogs_yaml_iter_type(&subnet_array) ==
                             YAML_SEQUENCE_NODE);
@@ -2536,15 +2576,36 @@ ogs_pfcp_subnet_t *ogs_pfcp_find_subnet_by_dnn(int family, const char *dnn)
     ogs_assert(dnn);
     ogs_assert(family == AF_INET || family == AF_INET6);
 
+    ogs_debug("Finding subnet for DNN [%s]", dnn);
+
     ogs_list_for_each(&self.subnet_list, subnet) {
         if ((subnet->family == AF_UNSPEC || subnet->family == family) &&
             (strlen(subnet->dnn) == 0 ||
-                (strlen(subnet->dnn) && ogs_strcasecmp(subnet->dnn, dnn) == 0)) &&
-            subnet->pool.avail)
-            break;
+             (strlen(subnet->dnn) && !ogs_strcasecmp(subnet->dnn, dnn)))) {
+            if (subnet->pool.avail) {
+                ogs_debug("Found matching primary DNN [%s]", subnet->dnn);
+                return subnet;
+            }
+        }
     }
 
-    return subnet;
+    /* If not found in primary DNN, check the accepted list */
+    ogs_debug("No primary DNN match found, checking accept lists");
+    ogs_list_for_each(&self.subnet_list, subnet) {
+        if ((subnet->family == AF_UNSPEC || subnet->family == family) &&
+                subnet->pool.avail) {
+            int i;
+            for (i = 0; i < subnet->num_of_accept; i++) {
+                if (!ogs_strcasecmp(subnet->accept[i], dnn) && subnet->pool.avail) {
+                    ogs_info("Alias match: APN [%s] maps to subnet DNN [%s]", dnn, subnet->dnn);
+                    return subnet;
+                }
+            }
+        }
+    }
+
+    ogs_warn("Could not find any matching subnet for DNN [%s]", dnn);
+    return NULL;
 }
 
 void ogs_pfcp_pool_init(ogs_pfcp_sess_t *sess)

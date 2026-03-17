@@ -1703,6 +1703,7 @@ uint8_t smf_sess_set_ue_ip(smf_sess_t *sess)
             return cause_value;
         }
         sess->paa.addr = sess->ipv4->addr[0];
+        sess->pfcp_subnet = sess->ipv4->subnet;
         ogs_hash_set(smf_self()->ipv4_hash,
                 sess->ipv4->addr, OGS_IPV4_LEN, sess);
     } else if (sess->session.session_type == OGS_PDU_SESSION_TYPE_IPV6) {
@@ -1714,6 +1715,7 @@ uint8_t smf_sess_set_ue_ip(smf_sess_t *sess)
         }
 
         subnet6 = sess->ipv6->subnet;
+        sess->pfcp_subnet = subnet6;
         ogs_assert(subnet6);
 
         sess->paa.len = OGS_IPV6_DEFAULT_PREFIX_LEN;
@@ -1740,6 +1742,7 @@ uint8_t smf_sess_set_ue_ip(smf_sess_t *sess)
             }
             return cause_value;
         }
+        sess->pfcp_subnet = sess->ipv6->subnet;
 
         subnet6 = sess->ipv6->subnet;
         ogs_assert(subnet6);

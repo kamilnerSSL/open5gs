@@ -47,6 +47,7 @@ ogs_pkbuf_t *smf_s5c_build_create_session_response(
     int len;
     uint8_t pco_buf[OGS_MAX_PCO_LEN];
     int16_t pco_len;
+    char apn_buf[OGS_MAX_APN_LEN + 1];
     uint8_t apco_buf[OGS_MAX_PCO_LEN];
     int16_t apco_len;
     uint8_t *epco_buf = NULL;
@@ -112,6 +113,13 @@ ogs_pkbuf_t *smf_s5c_build_create_session_response(
         ogs_assert_if_reached();
     rsp->pdn_address_allocation.presence = 1;
 
+    /* APN */
+    rsp->apn.len = ogs_fqdn_build(apn_buf, sess->session.name, strlen(sess->session.name));
+    if (rsp->apn.len > 0) {
+        rsp->apn.presence = 1;
+        rsp->apn.data = apn_buf;
+    }
+
     /* APN Restriction */
     switch (sess->gtp_rat_type) {
     case OGS_GTP2_RAT_TYPE_EUTRAN:
@@ -135,8 +143,8 @@ ogs_pkbuf_t *smf_s5c_build_create_session_response(
         rsp->aggregate_maximum_bit_rate.data = &ambr;
         rsp->aggregate_maximum_bit_rate.len = sizeof(ambr);
 
-        ogs_debug("    APN-AMBR: DL[%" PRIu64 "] UL[%" PRIu64 "]",
-                ambr.downlink, ambr.uplink);
+        ogs_debug("    APN-AMBR: DL[%" PRIu32 "] UL[%" PRIu32 "]",
+                be32toh(ambr.downlink), be32toh(ambr.uplink));
     }
 
     /* PCO */

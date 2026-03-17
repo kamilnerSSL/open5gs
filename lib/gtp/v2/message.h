@@ -888,6 +888,7 @@ typedef struct ogs_gtp2_create_session_response_s {
     ogs_gtp2_tlv_fqdn_t alternative_pgw_c_smf_fqdn;
     ogs_gtp2_tlv_ip_address_t alternative_pgw_c_smf_ip_address;
     ogs_gtp2_tlv_up_security_policy_t up_security_policy;
+    ogs_gtp2_tlv_apn_t apn;
 } ogs_gtp2_create_session_response_t;
 
 typedef struct ogs_gtp2_modify_bearer_request_s {

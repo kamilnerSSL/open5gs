@@ -1,4 +1,4 @@
-# Copyright (C) 2019 by Sukchan Lee <acetcom@gmail.com>
+# Copyright (C) 2026 by Keith Milner <kamilner@sslconsult.com>
 
 # This file is part of Open5GS.
 
@@ -15,23 +15,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-testinc = include_directories('.')
+test_dnn_override_src = [
+  'test_dnn_override.c',
+]
 
-subdir('core')
-subdir('crypt')
-subdir('sctp')
-subdir('unit')
-subdir('af')
-subdir('dnn_override')
-subdir('common')
-subdir('app')
-subdir('registration')
-subdir('vonr')
-subdir('slice')
-subdir('attach')
-subdir('volte')
-subdir('csfb')
-subdir('310014')
-subdir('handover')
-subdir('non3gpp')
-subdir('transfer')
+test_dnn_override_exe = executable('test-dnn-override',
+  test_dnn_override_src,
+  include_directories : ['../../lib', '../../src', testinc],
+  dependencies : [ libapp_dep, libsmf_dep, libcore_dep, libgtp_dep, libpfcp_dep, libsbi_dep ],
+)
+
+test('dnn_override', test_dnn_override_exe, suite: 'smf')

@@ -2302,6 +2302,7 @@ ogs_tlv_desc_t ogs_gtp2_tlv_desc_create_session_response =
         &ogs_gtp2_tlv_desc_fqdn_3,
         &ogs_gtp2_tlv_desc_ip_address_1,
         &ogs_gtp2_tlv_desc_up_security_policy_0,
+        &ogs_gtp2_tlv_desc_apn_0,
     NULL,
 }};
 
