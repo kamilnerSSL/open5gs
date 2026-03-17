@@ -6,7 +6,7 @@
 
 Name:           open5g
 Version:        2.7.7
-Release:        1%{basesuffix}%{?dist}
+Release:        2%{basesuffix}%{?dist}
 Summary:        Open Source Core Network for 5G
 
 License:        AGPL-3.0-or-later
@@ -586,6 +586,10 @@ fi
 %{_unitdir}/open5gs-upfd.service
 
 %changelog
+* Mon Mar 17 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-2
+- Add force_pcscf per-DNN session option to include P-CSCF IPv4 address in
+  Create Session Response even when not requested by UE
+
 * Mon Mar 17 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-1
 - Bump to 2.7.7
 - Simplify Release field to a plain revision number; remove branch-aware
