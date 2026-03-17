@@ -4,21 +4,9 @@
 # basesuffix identifies your packaging (always appended to Release).
 %global basesuffix .sslconsult
 
-# branchsuffix is passed at build time via --define 'branchsuffix .feature_name'
-# for feature-branch builds.  When absent (main/release builds) the normal
-# release number is used and the resulting package will supersede any
-# pre-release feature-branch builds of the same Version.
-%if "%{?branchsuffix}" != ""
-# buildnum is the git commit count, passed by build.sh. It increments with
-# every commit so dnf/yum always sees a rebuild as a newer package.
-%global _release 0.1%{branchsuffix}.%{?buildnum}%{!?buildnum:0}%{basesuffix}
-%else
-%global _release 2%{basesuffix}
-%endif
-
 Name:           open5g
 Version:        2.7.7
-Release:        %{_release}%{?dist}
+Release:        1%{basesuffix}%{?dist}
 Summary:        Open Source Core Network for 5G
 
 License:        AGPL-3.0-or-later
@@ -598,6 +586,11 @@ fi
 %{_unitdir}/open5gs-upfd.service
 
 %changelog
+* Mon Mar 17 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-1
+- Bump to 2.7.7
+- Simplify Release field to a plain revision number; remove branch-aware
+  versioning and branchsuffix/buildnum logic
+
 * Mon Mar 09 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-2
 - Switch to branch-aware versioning: feature-branch builds use 0.1.branchname
   prefix so they sort below the merged release build
