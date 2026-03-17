@@ -3097,7 +3097,8 @@ static const uint8_t *ipcp_contains_option(
 #include "../version.h"
 static const char *pap_welcome = "Welcome to open5gs-smfd " OPEN5GS_VERSION;
 
-int smf_pco_build(uint8_t *pco_buf, uint8_t *buffer, int length)
+int smf_pco_build(uint8_t *pco_buf, uint8_t *buffer, int length,
+        smf_sess_t *sess)
 {
     int rv;
     ogs_pco_t ue, smf;
@@ -3112,6 +3113,14 @@ int smf_pco_build(uint8_t *pco_buf, uint8_t *buffer, int length)
     int size = 0;
     int i = 0;
     uint16_t mtu = 0;
+    bool p_cscf_added = false;
+    bool force_pcscf = false;
+    if (sess && sess->session.name) {
+        ogs_pfcp_subnet_t *subnet = ogs_pfcp_find_subnet_by_dnn(
+                AF_INET, sess->session.name);
+        if (subnet)
+            force_pcscf = subnet->force_pcscf;
+    }
 
     ogs_assert(pco_buf);
     ogs_assert(buffer);
@@ -3291,6 +3300,7 @@ int smf_pco_build(uint8_t *pco_buf, uint8_t *buffer, int length)
 
                 smf_self()->p_cscf_index++;
                 smf_self()->p_cscf_index %= smf_self()->num_of_p_cscf;
+                p_cscf_added = true;
             }
             break;
         case OGS_PCO_ID_P_CSCF_IPV6_ADDRESS_REQUEST:
@@ -3334,6 +3344,20 @@ int smf_pco_build(uint8_t *pco_buf, uint8_t *buffer, int length)
         default:
             ogs_warn("Unknown PCO ID:(0x%x)", ue.ids[i].id);
         }
+    }
+
+    /* Force P-CSCF IPv4 if configured for this DNN and not already included */
+    if (force_pcscf && !p_cscf_added && smf_self()->num_of_p_cscf) {
+        rv = ogs_ipsubnet(&p_cscf,
+                smf_self()->p_cscf[smf_self()->p_cscf_index], NULL);
+        ogs_assert(rv == OGS_OK);
+        smf.ids[smf.num_of_id].id = OGS_PCO_ID_P_CSCF_IPV4_ADDRESS_REQUEST;
+        smf.ids[smf.num_of_id].len = OGS_IPV4_LEN;
+        smf.ids[smf.num_of_id].data = p_cscf.sub;
+        smf.num_of_id++;
+
+        smf_self()->p_cscf_index++;
+        smf_self()->p_cscf_index %= smf_self()->num_of_p_cscf;
     }
 
     size = ogs_pco_build(pco_buf, OGS_MAX_PCO_LEN, &smf);

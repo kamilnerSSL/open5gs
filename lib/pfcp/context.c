@@ -764,6 +764,7 @@ int ogs_pfcp_context_parse_config(const char *local, const char *remote)
                         const char *low[OGS_MAX_NUM_OF_SUBNET_RANGE];
                         const char *high[OGS_MAX_NUM_OF_SUBNET_RANGE];
                         int i, num = 0;
+                        bool force_pcscf = false;
 
                         memset(low, 0, sizeof(low));
                         memset(high, 0, sizeof(high));
@@ -803,6 +804,8 @@ int ogs_pfcp_context_parse_config(const char *local, const char *remote)
                                 dnn = ogs_yaml_iter_value(&subnet_iter);
                             } else if (!strcmp(subnet_key, "dev")) {
                                 dev = ogs_yaml_iter_value(&subnet_iter);
+                            } else if (!strcmp(subnet_key, "force_pcscf")) {
+                                force_pcscf = ogs_yaml_iter_bool(&subnet_iter);
                             } else if (!strcmp(subnet_key, "range")) {
                                 ogs_yaml_iter_t range_iter;
                                 ogs_yaml_iter_recurse(
@@ -845,6 +848,7 @@ int ogs_pfcp_context_parse_config(const char *local, const char *remote)
                                 ipstr, mask_or_numbits, gateway, dnn, dev);
                         ogs_assert(subnet);
 
+                        subnet->force_pcscf = force_pcscf;
                         subnet->num_of_range = num;
                         for (i = 0; i < subnet->num_of_range; i++) {
                             subnet->range[i].low = low[i];
