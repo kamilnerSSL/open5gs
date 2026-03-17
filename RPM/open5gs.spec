@@ -596,7 +596,8 @@ fi
   prefix so they sort below the merged release build
 - Replace custom autorelease macro with explicit Release field controlled by
   optional branchsuffix define; use build.sh to set it automatically
-
+* Thu Feb 12 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.6-2
+- Adds debugging for SMF and small fix for AMBR setting
 * Thu Sep 18 2025 Keith Milner <kamilner@sslconsult.com> - 2.7.6-1
 - Initial RPM packaging for Open5GS
 - Restructured to build individual packages for each service

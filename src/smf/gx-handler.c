@@ -51,6 +51,9 @@ uint32_t smf_gx_handle_cca_initial_request(
     ogs_debug("    SGW_S5C_TEID[0x%x] PGW_S5C_TEID[0x%x]",
             sess->sgw_s5c_teid, sess->smf_n4_teid);
 
+    ogs_debug("    APN-AMBR: DL[%" PRIu64 "] UL[%" PRIu64 "]",
+            sess->session.ambr.downlink, sess->session.ambr.uplink);
+
     if (gx_message->result_code != ER_DIAMETER_SUCCESS)
         return gx_message->err ? *gx_message->err :
                                  ER_DIAMETER_AUTHENTICATION_REJECTED;
@@ -71,10 +74,15 @@ uint32_t smf_gx_handle_cca_initial_request(
             (sess->session.ambr.downlink / 1000) !=
                 (gx_message->session_data.session.ambr.downlink / 1000))) {
 
-        sess->session.ambr.downlink =
-            gx_message->session_data.session.ambr.downlink;
-        sess->session.ambr.uplink =
-            gx_message->session_data.session.ambr.uplink;
+        if (gx_message->session_data.session.ambr.downlink)
+            sess->session.ambr.downlink =
+                gx_message->session_data.session.ambr.downlink;
+        if (gx_message->session_data.session.ambr.uplink)
+            sess->session.ambr.uplink =
+                gx_message->session_data.session.ambr.uplink;
+
+        ogs_debug("APN-AMBR updated: DL[%" PRIu64 "] UL[%" PRIu64 "]",
+                sess->session.ambr.downlink, sess->session.ambr.uplink);
 
         sess->gtp.create_session_response_apn_ambr = true;
     }

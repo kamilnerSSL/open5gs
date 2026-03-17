@@ -958,6 +958,10 @@ static void smf_gx_cca_cb(void *data, struct msg **msg)
         }
     }
 
+    ogs_debug("Gx AMBR: DL[%" PRIu64 "] UL[%" PRIu64 "]",
+            gx_message->session_data.session.ambr.downlink,
+            gx_message->session_data.session.ambr.uplink);
+
     /* Process Default EPS Bearer QoS */
     ret = fd_msg_search_avp(*msg, ogs_diam_gx_default_eps_bearer_qos, &avp);
     ogs_assert(ret == 0);
