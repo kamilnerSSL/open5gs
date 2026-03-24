@@ -242,6 +242,15 @@ typedef struct ogs_pfcp_far_s {
         } teid;
     } hash;
 
+    /* Previous f-TEID hash entry, retained for one update cycle so that
+     * stale GTP-U Error Indications from a superseded path (e.g. the
+     * old SGW after a handover) can be identified and discarded rather
+     * than silently dropped with "Cannot find FAR". */
+    struct {
+        int len;
+        ogs_pfcp_far_hash_f_teid_t key;
+    } prev_f_teid;
+
     union {
         char *apn;
         char *dnn;
