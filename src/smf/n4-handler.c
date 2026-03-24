@@ -1789,11 +1789,29 @@ uint8_t smf_n4_handle_session_report_request(
     /* Error Indication is handled last */
     if (report_type.error_indication_report && far) {
         if (sess->epc == true) {
-            ogs_error("[%s:%s] Error Indication from SGW-C",
-                smf_ue->imsi_bcd, sess->session.name);
-            ogs_assert(OGS_OK ==
-                smf_epc_pfcp_send_session_deletion_request(
-                    sess, OGS_INVALID_POOL_ID));
+            /* Find which bearer owns this FAR */
+            ogs_list_for_each(&sess->bearer_list, bearer) {
+                if (bearer->dl_far == far || bearer->ul_far == far)
+                    break;
+            }
+            if (!bearer) {
+                ogs_error("[%s:%s] Cannot find bearer for Error Indication",
+                    smf_ue->imsi_bcd, sess->session.name);
+            } else if (smf_default_bearer_in_sess(sess) == bearer) {
+                ogs_error("[%s:%s] Error Indication(Default Bearer) from SGW-C",
+                    smf_ue->imsi_bcd, sess->session.name);
+                ogs_assert(OGS_OK ==
+                    smf_epc_pfcp_send_session_deletion_request(
+                        sess, OGS_INVALID_POOL_ID));
+            } else {
+                ogs_error("[%s:%s] Error Indication(Dedicated Bearer) from SGW-C",
+                    smf_ue->imsi_bcd, sess->session.name);
+                ogs_assert(OGS_OK ==
+                    smf_epc_pfcp_send_one_bearer_modification_request(
+                        bearer, OGS_INVALID_POOL_ID, OGS_PFCP_MODIFY_REMOVE,
+                        OGS_NAS_PROCEDURE_TRANSACTION_IDENTITY_UNASSIGNED,
+                        OGS_GTP2_CAUSE_UNDEFINED_VALUE));
+            }
         } else {
             ogs_warn("[%s:%s] Error Indication from gNB",
                 smf_ue->supi, sess->session.name);

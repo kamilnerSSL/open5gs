@@ -185,8 +185,8 @@ static void _gtpv1_u_recv_cb(short when, ogs_socket_t fd, void *data)
                     sgwu_pfcp_send_session_report_request(sess, &report));
             }
         } else {
-            ogs_error("[DROP] Cannot find FAR by Error-Indication");
-            ogs_log_hexdump(OGS_LOG_ERROR, pkbuf->data, pkbuf->len);
+            ogs_warn("[DROP] Cannot find FAR by Error-Indication");
+            ogs_log_hexdump(OGS_LOG_WARN, pkbuf->data, pkbuf->len);
         }
     } else if (header_desc.type == OGS_GTPU_MSGTYPE_GPDU) {
         struct ip *ip_h = NULL;
