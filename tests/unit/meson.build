@@ -38,3 +38,15 @@ testunit_unit_exe = executable('unit',
                     libsbi_dep])
 
 test('unit', testunit_unit_exe, is_parallel : false, suite: 'unit')
+
+testunit_pfcp_far_sources = files('''
+    pfcp-far-abts-main.c
+    pfcp-far-test.c
+'''.split())
+
+testunit_pfcp_far_exe = executable('pfcp-far',
+    sources : testunit_pfcp_far_sources,
+    c_args : [testunit_core_cc_flags],
+    dependencies : [libpfcp_dep])
+
+test('pfcp-far', testunit_pfcp_far_exe, is_parallel : false, suite: 'unit')
