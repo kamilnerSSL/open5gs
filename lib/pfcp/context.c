@@ -1767,9 +1767,18 @@ void ogs_pfcp_far_f_teid_hash_set(ogs_pfcp_far_t *far)
     addr = &gnode->addr;
     ogs_assert(addr);
 
-    if (far->hash.f_teid.len)
+    /* Remove the entry from two update-cycles ago (if any).
+     * The entry from one cycle ago (prev_f_teid) is intentionally kept
+     * alive so that stale Error Indications from a superseded path can
+     * still be matched and discarded cleanly. */
+    if (far->prev_f_teid.len)
         ogs_hash_set(self.far_f_teid_hash,
-                &far->hash.f_teid.key, far->hash.f_teid.len, NULL);
+                &far->prev_f_teid.key, far->prev_f_teid.len, NULL);
+
+    /* Promote the current entry to prev without removing it from the
+     * hash table — the old (TEID, peer-IP) → FAR mapping stays valid. */
+    far->prev_f_teid.len = far->hash.f_teid.len;
+    far->prev_f_teid.key = far->hash.f_teid.key;
 
     far->hash.f_teid.key.teid = far->outer_header_creation.teid;
     far->hash.f_teid.len = sizeof(far->hash.f_teid.key.teid);
@@ -1852,8 +1861,26 @@ ogs_pfcp_far_t *ogs_pfcp_far_find_by_gtpu_error_indication(ogs_pkbuf_t *pkbuf)
     memcpy(hashkey.addr, p, len);
     hashkey_len = 4 + len;
 
-    return (ogs_pfcp_far_t *)ogs_hash_get(
-            self.far_f_teid_hash, &hashkey, hashkey_len);
+    {
+        ogs_pfcp_far_t *far = (ogs_pfcp_far_t *)ogs_hash_get(
+                self.far_f_teid_hash, &hashkey, hashkey_len);
+
+        if (!far)
+            return NULL;
+
+        /* Verify the match is against the FAR's current (active) hash key.
+         * If the keys differ, the lookup hit a stale prev_f_teid entry from
+         * a superseded path (e.g. the old SGW after a handover).  The Error
+         * Indication is not actionable; discard it so the SMF is not
+         * incorrectly triggered against the now-live bearer. */
+        if (far->hash.f_teid.len == hashkey_len &&
+            memcmp(&far->hash.f_teid.key, &hashkey, hashkey_len) == 0)
+            return far;
+
+        ogs_warn("[STALE] Error Indication [TEID:0x%x] matched superseded "
+                 "FAR path (handover in progress); discarding", teid);
+        return NULL;
+    }
 }
 
 ogs_pfcp_far_t *ogs_pfcp_far_find_by_pfcp_session_report(
@@ -1950,6 +1977,10 @@ void ogs_pfcp_far_remove(ogs_pfcp_far_t *far)
     if (far->hash.f_teid.len)
         ogs_hash_set(self.far_f_teid_hash,
                 &far->hash.f_teid.key, far->hash.f_teid.len, NULL);
+
+    if (far->prev_f_teid.len)
+        ogs_hash_set(self.far_f_teid_hash,
+                &far->prev_f_teid.key, far->prev_f_teid.len, NULL);
 
     if (far->dnn)
         ogs_free(far->dnn);
