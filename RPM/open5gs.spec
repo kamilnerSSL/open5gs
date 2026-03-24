@@ -6,7 +6,7 @@
 
 Name:           open5gs
 Version:        2.7.7
-Release:        1%{basesuffix}%{?dist}
+Release:        3%{basesuffix}%{?dist}
 Summary:        Open Source Core Network for 5G
 
 License:        AGPL-3.0-or-later
@@ -586,6 +586,19 @@ fi
 %{_unitdir}/open5gs-upfd.service
 
 %changelog
+* Tue Mar 24 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-3
+- smf: fix Error Indication handling for dedicated EPC bearers; single-bearer
+  removal is now used instead of full PDN session teardown when the affected
+  bearer is a dedicated bearer
+- pfcp/upf/sgwu: preserve stale FAR hash entry across SGW handovers to prevent
+  stale GTP-U Error Indications from triggering runaway session re-establishment
+- tests/unit: add pfcp-far regression test binary covering the FAR hash fix
+
+* Mon Mar 17 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-2
+- Add force_pcscf per-DNN session option to include P-CSCF IPv4 address in
+  Create Session Response even when not requested by UE
+
+
 * Mon Mar 17 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-1
 - Bump to 2.7.7
 - Simplify Release field to a plain revision number; remove branch-aware
