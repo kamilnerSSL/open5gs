@@ -6,7 +6,7 @@
 
 Name:           open5gs
 Version:        2.7.7
-Release:        3%{basesuffix}%{?dist}
+Release:        4%{basesuffix}%{?dist}
 Summary:        Open Source Core Network for 5G
 
 License:        AGPL-3.0-or-later
@@ -586,6 +586,11 @@ fi
 %{_unitdir}/open5gs-upfd.service
 
 %changelog
+* Tue Mar 24 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-4
+- smf: fix UPF session leak on UE re-attach; superseded OLD sessions now
+  receive a PFCP Session Deletion Request before SMF context is freed,
+  preventing orphaned UPF sessions accumulating without bound
+
 * Tue Mar 24 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-3
 - smf: fix Error Indication handling for dedicated EPC bearers; single-bearer
   removal is now used instead of full PDN session teardown when the affected
