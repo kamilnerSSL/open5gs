@@ -1380,6 +1380,9 @@ smf_sess_t *smf_sess_add_by_gtp1_message(ogs_gtp1_message_t *message)
     if (sess) {
         ogs_warn("OLD Session Will Release [IMSI:%s,APN:%s]",
                 smf_ue->imsi_bcd, sess->session.name);
+        if (sess->pfcp_node && sess->upf_n4_seid)
+            smf_epc_pfcp_send_session_deletion_request(
+                    sess, OGS_INVALID_POOL_ID);
         smf_sess_remove(sess);
     }
 
@@ -1448,6 +1451,9 @@ smf_sess_t *smf_sess_add_by_gtp2_message(ogs_gtp2_message_t *message)
     if (sess) {
         ogs_info("OLD Session Will Release [IMSI:%s,APN:%s]",
                 smf_ue->imsi_bcd, sess->session.name);
+        if (sess->pfcp_node && sess->upf_n4_seid)
+            smf_epc_pfcp_send_session_deletion_request(
+                    sess, OGS_INVALID_POOL_ID);
         smf_sess_remove(sess);
     }
 
@@ -1576,6 +1582,10 @@ smf_sess_t *smf_sess_add_by_sm_context(ogs_sbi_message_t *message)
                 SmContextCreateData->supi, SmContextCreateData->pdu_session_id);
         smf_metrics_inst_by_slice_add(&sess->serving_plmn_id, &sess->s_nssai,
                 SMF_METR_GAUGE_SM_SESSIONNBR, -1);
+        if (sess->pfcp_node && sess->upf_n4_seid)
+            smf_5gc_pfcp_send_session_deletion_request(
+                    sess, NULL,
+                    OGS_PFCP_DELETE_TRIGGER_LOCAL_INITIATED);
         smf_sess_remove(sess);
     }
 
@@ -1630,6 +1640,10 @@ smf_sess_t *smf_sess_add_by_pdu_session(ogs_sbi_message_t *message)
                 PduSessionCreateData->pdu_session_id);
         smf_metrics_inst_by_slice_add(&sess->serving_plmn_id, &sess->s_nssai,
                 SMF_METR_GAUGE_SM_SESSIONNBR, -1);
+        if (sess->pfcp_node && sess->upf_n4_seid)
+            smf_5gc_pfcp_send_session_deletion_request(
+                    sess, NULL,
+                    OGS_PFCP_DELETE_TRIGGER_LOCAL_INITIATED);
         smf_sess_remove(sess);
     }
 
