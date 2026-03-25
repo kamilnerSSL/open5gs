@@ -135,8 +135,8 @@ ogs_pkbuf_t *smf_s5c_build_create_session_response(
         rsp->aggregate_maximum_bit_rate.data = &ambr;
         rsp->aggregate_maximum_bit_rate.len = sizeof(ambr);
 
-        ogs_debug("    APN-AMBR: DL[%" PRIu64 "] UL[%" PRIu64 "]",
-                ambr.downlink, ambr.uplink);
+        ogs_debug("    APN-AMBR: DL[%" PRIu32 "] UL[%" PRIu32 "]",
+                be32toh(ambr.downlink), be32toh(ambr.uplink));
     }
 
     /* PCO */
