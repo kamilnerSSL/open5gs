@@ -337,11 +337,16 @@ void smf_pfcp_state_associated(ogs_fsm_t *s, smf_event_t *e)
             if (!sess) {
                 ogs_gtp_xact_t *gtp_xact =
                     ogs_gtp_xact_find_by_id(xact->assoc_xact_id);
-                ogs_error("No Session");
                 if (!gtp_xact) {
-                    ogs_error("No associated GTP transaction");
+                    /* No associated GTP transaction: this was a
+                     * fire-and-forget deletion (e.g. superseded OLD
+                     * session cleanup). The UPF has cleaned up its
+                     * session; nothing further to do on the SMF side. */
+                    ogs_debug("Session Deletion Response: "
+                              "session already removed (fire-and-forget)");
                     break;
                 }
+                ogs_error("No Session");
                 if (gtp_xact->gtp_version == 1)
                     ogs_gtp1_send_error_message(gtp_xact, 0,
                         OGS_GTP1_DELETE_PDP_CONTEXT_RESPONSE_TYPE,
