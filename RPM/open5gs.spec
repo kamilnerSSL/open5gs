@@ -3,7 +3,7 @@
 
 # basesuffix identifies your packaging (always appended to Release).
 %global basesuffix .sslconsult
-%global releaseNum 5
+%global releaseNum 6
 
 Name:           open5gs
 Version:        2.7.7
@@ -587,6 +587,15 @@ fi
 %{_unitdir}/open5gs-upfd.service
 
 %changelog
+* Sat Mar 28 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-6
+- sgwc: forward Modify Bearer Request to PGW over S5/S8 for home-routed
+  roaming; without this the PGW-U never received the SGW-U GTP-U endpoint,
+  permanently black-holing downlink traffic after initial attach (TS 29.274
+  §7.2.7)
+
+* Sat Mar 28 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-5
+- smf: fix PRIu64/uint32_t format mismatch in APN-AMBR debug log
+
 * Tue Mar 24 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-4
 - smf: fix UPF session leak on UE re-attach; superseded OLD sessions now
   receive a PFCP Session Deletion Request before SMF context is freed,
