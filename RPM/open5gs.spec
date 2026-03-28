@@ -3,10 +3,11 @@
 
 # basesuffix identifies your packaging (always appended to Release).
 %global basesuffix .sslconsult
+%global releaseNum 5
 
 Name:           open5gs
 Version:        2.7.7
-Release:        4%{basesuffix}%{?dist}
+Release:        %{releaseNum}%{basesuffix}%{?dist}
 Summary:        Open Source Core Network for 5G
 
 License:        AGPL-3.0-or-later
