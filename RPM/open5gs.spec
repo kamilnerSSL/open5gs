@@ -3,7 +3,7 @@
 
 # basesuffix identifies your packaging (always appended to Release).
 %global basesuffix .sslconsult
-%global releaseNum 6
+%global releaseNum 7
 
 Name:           open5gs
 Version:        2.7.7
@@ -587,6 +587,12 @@ fi
 %{_unitdir}/open5gs-upfd.service
 
 %changelog
+* Sat Mar 28 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-7
+- sgwc: fix Modify Bearer Request to PGW: use s5_s8_u_sgw_f_teid (TLV
+  instance 2) instead of s4_u_sgsn_f_teid (instance 1) in the bearer
+  context; instance 1 is the SGSN→SGW direction; PGW parsers expect
+  the SGW-U S5/S8 GTP-U TEID at the same instance as in Create Session
+
 * Sat Mar 28 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-6
 - sgwc: forward Modify Bearer Request to PGW over S5/S8 for home-routed
   roaming; without this the PGW-U never received the SGW-U GTP-U endpoint,
