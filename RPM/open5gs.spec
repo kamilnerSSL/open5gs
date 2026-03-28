@@ -3,7 +3,7 @@
 
 # basesuffix identifies your packaging (always appended to Release).
 %global basesuffix .sslconsult
-%global releaseNum 8
+%global releaseNum 9
 
 Name:           open5gs
 Version:        2.7.7
@@ -587,6 +587,13 @@ fi
 %{_unitdir}/open5gs-upfd.service
 
 %changelog
+* Sat Mar 28 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-9
+- sgwc: fix crash in multi-PDN Modify Bearer forwarding; s5c_xact had
+  assoc_xact_id set to s11_xact->id but s11_xact->assoc_xact_id was
+  not set, causing ogs_gtp_xact_deassociate() assertion failure; fix
+  by leaving assoc_xact_id unset and looking up S11 xact via UE
+  context mb_s11_xact_id in the response handler
+
 * Sat Mar 28 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-8
 - sgwc: support multi-PDN Modify Bearer forwarding to distinct PGWs (e.g.
   IMS/VoLTE + data over S8); add mb_pgw_pending counter to sgwc_ue so
