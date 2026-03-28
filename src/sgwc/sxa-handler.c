@@ -1308,12 +1308,25 @@ void sgwc_sxa_handle_session_modification_response(
                         }
                         s5c_xact->local_teid = fwd_sess->sgw_s5c_teid;
 
-                        ogs_gtp_xact_associate(s11_xact, s5c_xact);
+                        /*
+                         * N:1 association: multiple S5C xacts all point back
+                         * to the same S11 xact.  Assign directly rather than
+                         * using ogs_gtp_xact_associate() which only supports
+                         * a 1:1 pairing.  The S11 xact's assoc_xact_id is NOT
+                         * set here; instead mb_s11_xact_id on the UE carries
+                         * the reverse link used by the response handler.
+                         */
+                        s5c_xact->assoc_xact_id = s11_xact->id;
 
                         rv = ogs_gtp_xact_commit(s5c_xact);
                         ogs_expect(rv == OGS_OK);
 
                         num_fwd++;
+                    }
+
+                    if (num_fwd > 0) {
+                        sgwc_ue->mb_s11_xact_id = s11_xact->id;
+                        sgwc_ue->mb_pgw_pending  = num_fwd;
                     }
 
                     if (num_fwd == 0) {
