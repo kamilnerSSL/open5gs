@@ -1264,13 +1264,22 @@ void sgwc_sxa_handle_session_modification_response(
                             pgw_req->bearer_contexts_to_be_modified[
                                 num_of_bearer].eps_bearer_id.u8 =
                                     fwd_bearer->ebi;
+                            /*
+                             * Use s5_s8_u_sgw_f_teid (TLV instance 2) —
+                             * the same bearer-context F-TEID instance that
+                             * carries the SGW-U S5/S8 GTP-U address in the
+                             * Create Session Request.  instance 1
+                             * (s4_u_sgsn_f_teid) is the SGSN→SGW direction
+                             * and is not the field PGW parsers look for when
+                             * processing a Modify Bearer Request from an SGW.
+                             */
                             pgw_req->bearer_contexts_to_be_modified[
-                                num_of_bearer].s4_u_sgsn_f_teid.presence = 1;
+                                num_of_bearer].s5_s8_u_sgw_f_teid.presence = 1;
                             pgw_req->bearer_contexts_to_be_modified[
-                                num_of_bearer].s4_u_sgsn_f_teid.data =
+                                num_of_bearer].s5_s8_u_sgw_f_teid.data =
                                     &fwd_s5u_teid[num_of_bearer];
                             pgw_req->bearer_contexts_to_be_modified[
-                                num_of_bearer].s4_u_sgsn_f_teid.len =
+                                num_of_bearer].s5_s8_u_sgw_f_teid.len =
                                     fwd_s5u_len[num_of_bearer];
 
                             num_of_bearer++;
