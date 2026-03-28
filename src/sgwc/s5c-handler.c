@@ -360,16 +360,24 @@ void sgwc_s5c_handle_modify_bearer_response(
      ********************/
     ogs_assert(s5c_xact);
     s11_xact = ogs_gtp_xact_find_by_id(s5c_xact->assoc_xact_id);
+    modify_action = s5c_xact->modify_action;
 
     rv = ogs_gtp_xact_commit(s5c_xact);
     ogs_expect(rv == OGS_OK);
+
+    /* Multi-PDN S8 forwarding: no assoc_xact_id on the S5C xact; find the
+     * S11 transaction via the UE context's mb_s11_xact_id instead. */
+    if (!s11_xact && sess) {
+        sgwc_ue_t *ue = sgwc_ue_find_by_id(sess->sgwc_ue_id);
+        if (ue)
+            s11_xact = ogs_gtp_xact_find_by_id(ue->mb_s11_xact_id);
+    }
 
     if (!s11_xact) {
         ogs_error("No S11 Transaction (assoc_xact_id=%u)",
                 s5c_xact->assoc_xact_id);
         return;
     }
-    modify_action = s5c_xact->modify_action;
 
     /************************
      * Getting Cause Value

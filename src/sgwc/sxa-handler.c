@@ -1309,15 +1309,13 @@ void sgwc_sxa_handle_session_modification_response(
                         s5c_xact->local_teid = fwd_sess->sgw_s5c_teid;
 
                         /*
-                         * N:1 association: multiple S5C xacts all point back
-                         * to the same S11 xact.  Assign directly rather than
-                         * using ogs_gtp_xact_associate() which only supports
-                         * a 1:1 pairing.  The S11 xact's assoc_xact_id is NOT
-                         * set here; instead mb_s11_xact_id on the UE carries
-                         * the reverse link used by the response handler.
+                         * Do NOT associate s5c_xact with s11_xact here.
+                         * ogs_gtp_xact_associate() is 1:1 only and
+                         * ogs_gtp_xact_deassociate() (called internally by
+                         * ogs_gtp_xact_commit) asserts both sides are set.
+                         * For the multi-PDN case the response handler finds
+                         * the S11 xact via sgwc_ue->mb_s11_xact_id instead.
                          */
-                        s5c_xact->assoc_xact_id = s11_xact->id;
-
                         rv = ogs_gtp_xact_commit(s5c_xact);
                         ogs_expect(rv == OGS_OK);
 
