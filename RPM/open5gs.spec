@@ -3,7 +3,7 @@
 
 # basesuffix identifies your packaging (always appended to Release).
 %global basesuffix .sslconsult
-%global releaseNum 7
+%global releaseNum 8
 
 Name:           open5gs
 Version:        2.7.7
@@ -587,6 +587,11 @@ fi
 %{_unitdir}/open5gs-upfd.service
 
 %changelog
+* Sat Mar 28 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-8
+- sgwc: support multi-PDN Modify Bearer forwarding to distinct PGWs (e.g.
+  IMS/VoLTE + data over S8); add mb_pgw_pending counter to sgwc_ue so
+  MBResponse is sent to MME only after all S5C responses are received
+
 * Sat Mar 28 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-7
 - sgwc: fix Modify Bearer Request to PGW: use s5_s8_u_sgw_f_teid (TLV
   instance 2) instead of s4_u_sgsn_f_teid (instance 1) in the bearer
