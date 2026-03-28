@@ -400,10 +400,12 @@ void sgwc_s5c_handle_modify_bearer_response(
             ogs_gtp_send_error_message(
                     s11_xact, sgwc_ue ? sgwc_ue->mme_s11_teid : 0,
                     OGS_GTP2_CREATE_SESSION_RESPONSE_TYPE, cause_value);
-        else
+        else {
+            if (sgwc_ue) sgwc_ue->mb_pgw_pending = -1;
             ogs_gtp_send_error_message(
                     s11_xact, sgwc_ue ? sgwc_ue->mme_s11_teid : 0,
                     OGS_GTP2_MODIFY_BEARER_RESPONSE_TYPE, cause_value);
+        }
         return;
     }
 
@@ -422,10 +424,12 @@ void sgwc_s5c_handle_modify_bearer_response(
             ogs_gtp_send_error_message(
                     s11_xact, sgwc_ue ? sgwc_ue->mme_s11_teid : 0,
                     OGS_GTP2_CREATE_SESSION_RESPONSE_TYPE, cause_value);
-        else
+        else {
+            if (sgwc_ue) sgwc_ue->mb_pgw_pending = -1;
             ogs_gtp_send_error_message(
                     s11_xact, sgwc_ue ? sgwc_ue->mme_s11_teid : 0,
                     OGS_GTP2_MODIFY_BEARER_RESPONSE_TYPE, cause_value);
+        }
         return;
     }
 
@@ -440,10 +444,12 @@ void sgwc_s5c_handle_modify_bearer_response(
             ogs_gtp_send_error_message(
                     s11_xact, sgwc_ue ? sgwc_ue->mme_s11_teid : 0,
                     OGS_GTP2_CREATE_SESSION_RESPONSE_TYPE, session_cause);
-        else
+        else {
+            sgwc_ue->mb_pgw_pending = -1;
             ogs_gtp_send_error_message(
                     s11_xact, sgwc_ue ? sgwc_ue->mme_s11_teid : 0,
                     OGS_GTP2_MODIFY_BEARER_RESPONSE_TYPE, session_cause);
+        }
         return;
     }
 
@@ -483,6 +489,30 @@ void sgwc_s5c_handle_modify_bearer_response(
         ogs_assert(OGS_OK ==
             sgwc_gtp_send_create_session_response(sess, s11_xact));
     } else {
+        /*
+         * Multi-PDN Modify Bearer: the SGW-C may have forwarded MBReq to
+         * more than one PGW (e.g. IMS + data APNs in a roaming scenario).
+         * mb_pgw_pending tracks how many S5C responses are still outstanding.
+         * Only send the MBResponse to the MME when the last one arrives.
+         *
+         * mb_pgw_pending == -1: an error response was already sent to the MME
+         *   by an earlier S5C response; silently discard this late success.
+         * mb_pgw_pending > 1:  more S5C responses expected; hold off.
+         * mb_pgw_pending <= 1: this is the last (or only) response; proceed.
+         */
+        if (sgwc_ue->mb_pgw_pending < 0) {
+            ogs_warn("    Modify Bearer: discarding late success "
+                     "(error already sent to MME)");
+            return;
+        }
+        if (sgwc_ue->mb_pgw_pending > 1) {
+            ogs_info("    Modify Bearer: %d PGW response(s) still pending",
+                    sgwc_ue->mb_pgw_pending - 1);
+            sgwc_ue->mb_pgw_pending--;
+            return;
+        }
+        sgwc_ue->mb_pgw_pending = 0;
+
         message->h.type = OGS_GTP2_MODIFY_BEARER_RESPONSE_TYPE;
         message->h.teid = sgwc_ue->mme_s11_teid;
 

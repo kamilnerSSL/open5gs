@@ -70,6 +70,12 @@ typedef struct sgwc_ue_s {
     ogs_list_t      sess_list;
 
     ogs_gtp_node_t  *gnode;
+
+    /* Multi-PDN Modify Bearer tracking: count of S5C MBReq forwarded to
+     * distinct PGWs that have not yet replied.  When this reaches zero the
+     * Modify Bearer Response is sent to the MME on S11. */
+    ogs_pool_id_t   mb_s11_xact_id;
+    int             mb_pgw_pending;
 } sgwc_ue_t;
 
 #define SGWC_SESS(pfcp_sess) ogs_container_of(pfcp_sess, sgwc_sess_t, pfcp)
