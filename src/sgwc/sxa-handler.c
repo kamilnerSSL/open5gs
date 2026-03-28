@@ -1186,17 +1186,143 @@ void sgwc_sxa_handle_session_modification_response(
                     ogs_expect(rv == OGS_OK);
 
                 } else {
-                    gtp_rsp = &send_message.modify_bearer_response;
-                    ogs_assert(gtp_rsp);
+                    /*
+                     * Forward Modify Bearer Request to PGW over S5/S8 so
+                     * the PGW-U can update its downlink FAR with the SGW-U
+                     * GTP-U TEID. Required by TS 29.274 section 7.2.7 for
+                     * E-UTRAN Initial Attach, Service Request, etc.
+                     *
+                     * Iterate all PDN sessions for this UE; each may have a
+                     * different PGW endpoint. The S11 transaction is
+                     * associated with the last S5C transaction created —
+                     * multi-PDN scenarios with distinct PGWs are therefore
+                     * not fully coalesced, but single-PDN (the common case
+                     * for S8 roaming) works correctly.
+                     */
+                    sgwc_sess_t *fwd_sess = NULL;
+                    int num_fwd = 0;
 
-                    memset(&send_message, 0, sizeof(ogs_gtp2_message_t));
+                    ogs_list_for_each(&sgwc_ue->sess_list, fwd_sess) {
+                        ogs_gtp2_modify_bearer_request_t *pgw_req = NULL;
+                        ogs_gtp2_f_teid_t fwd_s5c_teid;
+                        int fwd_s5c_len = 0;
+                        ogs_gtp2_f_teid_t fwd_s5u_teid[OGS_BEARER_PER_UE];
+                        int fwd_s5u_len[OGS_BEARER_PER_UE];
+                        sgwc_bearer_t *fwd_bearer = NULL;
+                        int num_of_bearer = 0;
 
-                    memset(&cause, 0, sizeof(cause));
-                    cause.value = OGS_GTP2_CAUSE_REQUEST_ACCEPTED;
+                        if (!fwd_sess->pgw_s5c_teid || !fwd_sess->gnode)
+                            continue;
 
-                    gtp_rsp->cause.presence = 1;
-                    gtp_rsp->cause.data = &cause;
-                    gtp_rsp->cause.len = sizeof(cause);
+                        memset(&send_message, 0, sizeof(ogs_gtp2_message_t));
+                        pgw_req = &send_message.modify_bearer_request;
+
+                        /* SGW S5/S8 control-plane TEID */
+                        memset(&fwd_s5c_teid, 0, sizeof(ogs_gtp2_f_teid_t));
+                        fwd_s5c_teid.interface_type =
+                            OGS_GTP2_F_TEID_S5_S8_SGW_GTP_C;
+                        fwd_s5c_teid.teid = htobe32(fwd_sess->sgw_s5c_teid);
+                        rv = ogs_gtp2_sockaddr_to_f_teid(
+                                ogs_gtp_self()->gtpc_addr,
+                                ogs_gtp_self()->gtpc_addr6,
+                                &fwd_s5c_teid, &fwd_s5c_len);
+                        ogs_assert(rv == OGS_OK);
+
+                        pgw_req->sender_f_teid_for_control_plane.presence = 1;
+                        pgw_req->sender_f_teid_for_control_plane.data =
+                            &fwd_s5c_teid;
+                        pgw_req->sender_f_teid_for_control_plane.len =
+                            fwd_s5c_len;
+
+                        /* Bearer contexts: SGW-U S5/S8 user-plane TEIDs */
+                        ogs_list_for_each(&fwd_sess->bearer_list, fwd_bearer) {
+                            ogs_assert(num_of_bearer < OGS_BEARER_PER_UE);
+
+                            dl_tunnel = sgwc_dl_tunnel_in_bearer(fwd_bearer);
+                            if (!dl_tunnel ||
+                                (!dl_tunnel->local_addr &&
+                                 !dl_tunnel->local_addr6))
+                                continue;
+
+                            memset(&fwd_s5u_teid[num_of_bearer], 0,
+                                    sizeof(ogs_gtp2_f_teid_t));
+                            fwd_s5u_teid[num_of_bearer].teid =
+                                htobe32(dl_tunnel->local_teid);
+                            fwd_s5u_teid[num_of_bearer].interface_type =
+                                dl_tunnel->interface_type;
+                            rv = ogs_gtp2_sockaddr_to_f_teid(
+                                    dl_tunnel->local_addr,
+                                    dl_tunnel->local_addr6,
+                                    &fwd_s5u_teid[num_of_bearer],
+                                    &fwd_s5u_len[num_of_bearer]);
+                            ogs_assert(rv == OGS_OK);
+
+                            pgw_req->bearer_contexts_to_be_modified[
+                                num_of_bearer].presence = 1;
+                            pgw_req->bearer_contexts_to_be_modified[
+                                num_of_bearer].eps_bearer_id.presence = 1;
+                            pgw_req->bearer_contexts_to_be_modified[
+                                num_of_bearer].eps_bearer_id.u8 =
+                                    fwd_bearer->ebi;
+                            pgw_req->bearer_contexts_to_be_modified[
+                                num_of_bearer].s4_u_sgsn_f_teid.presence = 1;
+                            pgw_req->bearer_contexts_to_be_modified[
+                                num_of_bearer].s4_u_sgsn_f_teid.data =
+                                    &fwd_s5u_teid[num_of_bearer];
+                            pgw_req->bearer_contexts_to_be_modified[
+                                num_of_bearer].s4_u_sgsn_f_teid.len =
+                                    fwd_s5u_len[num_of_bearer];
+
+                            num_of_bearer++;
+                        }
+
+                        if (num_of_bearer == 0)
+                            continue;
+
+                        send_message.h.type =
+                            OGS_GTP2_MODIFY_BEARER_REQUEST_TYPE;
+                        send_message.h.teid = fwd_sess->pgw_s5c_teid;
+
+                        pkbuf = ogs_gtp2_build_msg(&send_message);
+                        if (!pkbuf) {
+                            ogs_error("ogs_gtp2_build_msg() failed");
+                            return;
+                        }
+
+                        s5c_xact = ogs_gtp_xact_local_create(
+                                fwd_sess->gnode, &send_message.h, pkbuf,
+                                sess_timeout,
+                                OGS_UINT_TO_POINTER(fwd_sess->id));
+                        if (!s5c_xact) {
+                            ogs_error("ogs_gtp_xact_local_create() failed");
+                            return;
+                        }
+                        s5c_xact->local_teid = fwd_sess->sgw_s5c_teid;
+
+                        ogs_gtp_xact_associate(s11_xact, s5c_xact);
+
+                        rv = ogs_gtp_xact_commit(s5c_xact);
+                        ogs_expect(rv == OGS_OK);
+
+                        num_fwd++;
+                    }
+
+                    if (num_fwd == 0) {
+                        /*
+                         * No remote PGW found — send Modify Bearer Response
+                         * directly to MME (local S5 CUPS with no GTPv2 S5C).
+                         */
+                        gtp_rsp = &send_message.modify_bearer_response;
+                        ogs_assert(gtp_rsp);
+
+                        memset(&send_message, 0, sizeof(ogs_gtp2_message_t));
+
+                        memset(&cause, 0, sizeof(cause));
+                        cause.value = OGS_GTP2_CAUSE_REQUEST_ACCEPTED;
+
+                        gtp_rsp->cause.presence = 1;
+                        gtp_rsp->cause.data = &cause;
+                        gtp_rsp->cause.len = sizeof(cause);
 
         /* Copy Bearer-Contexts-Modified from Modify-Bearer-Request
          *
@@ -1211,59 +1337,66 @@ void sgwc_sxa_handle_session_modification_response(
          * both an IPv4 address and an IPv6 address
          * (see also subclause 8.22 "F-TEID").
          */
-                    for (i = 0; i < OGS_BEARER_PER_UE; i++) {
-                        if (gtp_req->bearer_contexts_to_be_modified[i].
-                            presence == 0)
-                            break;
-                        if (gtp_req->bearer_contexts_to_be_modified[i].
-                            eps_bearer_id.presence == 0)
-                            break;
-                        if (gtp_req->bearer_contexts_to_be_modified[i].
-                            s1_u_enodeb_f_teid.presence == 0)
-                            break;
+                        for (i = 0; i < OGS_BEARER_PER_UE; i++) {
+                            if (gtp_req->bearer_contexts_to_be_modified[i].
+                                presence == 0)
+                                break;
+                            if (gtp_req->bearer_contexts_to_be_modified[i].
+                                eps_bearer_id.presence == 0)
+                                break;
+                            if (gtp_req->bearer_contexts_to_be_modified[i].
+                                s1_u_enodeb_f_teid.presence == 0)
+                                break;
 
-                        gtp_rsp->bearer_contexts_modified[i].presence = 1;
-                        gtp_rsp->bearer_contexts_modified[i].eps_bearer_id.
-                            presence = 1;
-                        gtp_rsp->bearer_contexts_modified[i].eps_bearer_id.u8 =
-                            gtp_req->bearer_contexts_to_be_modified[i].
-                                eps_bearer_id.u8;
-                        gtp_rsp->bearer_contexts_modified[i].
+                            gtp_rsp->bearer_contexts_modified[i].presence = 1;
+                            gtp_rsp->bearer_contexts_modified[i].
+                                eps_bearer_id.presence = 1;
+                            gtp_rsp->bearer_contexts_modified[i].
+                                eps_bearer_id.u8 =
+                                    gtp_req->bearer_contexts_to_be_modified[i].
+                                        eps_bearer_id.u8;
+                            gtp_rsp->bearer_contexts_modified[i].
                                 s1_u_enodeb_f_teid.presence = 1;
-                        gtp_rsp->bearer_contexts_modified[i].
-                            s1_u_enodeb_f_teid.data =
-                                gtp_req->bearer_contexts_to_be_modified[i].
-                                    s1_u_enodeb_f_teid.data;
-                        gtp_rsp->bearer_contexts_modified[i].
-                            s1_u_enodeb_f_teid.len =
-                                gtp_req->bearer_contexts_to_be_modified[i].
-                                    s1_u_enodeb_f_teid.len;
+                            gtp_rsp->bearer_contexts_modified[i].
+                                s1_u_enodeb_f_teid.data =
+                                    gtp_req->bearer_contexts_to_be_modified[i].
+                                        s1_u_enodeb_f_teid.data;
+                            gtp_rsp->bearer_contexts_modified[i].
+                                s1_u_enodeb_f_teid.len =
+                                    gtp_req->bearer_contexts_to_be_modified[i].
+                                        s1_u_enodeb_f_teid.len;
 
-                        gtp_rsp->bearer_contexts_modified[i].cause.presence = 1;
-                        gtp_rsp->bearer_contexts_modified[i].cause.len =
-                            sizeof(cause);
-                        gtp_rsp->bearer_contexts_modified[i].cause.data =
-                            &cause;
+                            gtp_rsp->bearer_contexts_modified[i].
+                                cause.presence = 1;
+                            gtp_rsp->bearer_contexts_modified[i].cause.len =
+                                sizeof(cause);
+                            gtp_rsp->bearer_contexts_modified[i].cause.data =
+                                &cause;
+                        }
+
+                        send_message.h.type =
+                            OGS_GTP2_MODIFY_BEARER_RESPONSE_TYPE;
+                        send_message.h.teid = sgwc_ue->mme_s11_teid;
+
+                        pkbuf = ogs_gtp2_build_msg(&send_message);
+                        if (!pkbuf) {
+                            ogs_error("ogs_gtp2_build_msg() failed");
+                            return;
+                        }
+
+                        rv = ogs_gtp_xact_update_tx(
+                                s11_xact, &send_message.h, pkbuf);
+                        if (rv != OGS_OK) {
+                            ogs_error("ogs_gtp_xact_update_tx() failed");
+                            return;
+                        }
+
+                        rv = ogs_gtp_xact_commit(s11_xact);
+                        ogs_expect(rv == OGS_OK);
                     }
-
-                    send_message.h.type = OGS_GTP2_MODIFY_BEARER_RESPONSE_TYPE;
-                    send_message.h.teid = sgwc_ue->mme_s11_teid;
-
-                    pkbuf = ogs_gtp2_build_msg(&send_message);
-                    if (!pkbuf) {
-                        ogs_error("ogs_gtp2_build_msg() failed");
-                        return;
-                    }
-
-                    rv = ogs_gtp_xact_update_tx(
-                            s11_xact, &send_message.h, pkbuf);
-                    if (rv != OGS_OK) {
-                        ogs_error("ogs_gtp_xact_update_tx() failed");
-                        return;
-                    }
-
-                    rv = ogs_gtp_xact_commit(s11_xact);
-                    ogs_expect(rv == OGS_OK);
+                    /* else: MBResponse to MME is sent from
+                     * sgwc_s5c_handle_modify_bearer_response() after PGW
+                     * replies on S5/S8. */
                 }
             }
         } else {
