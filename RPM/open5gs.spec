@@ -3,7 +3,7 @@
 
 # basesuffix identifies your packaging (always appended to Release).
 %global basesuffix .sslconsult
-%global releaseNum 10
+%global releaseNum 11
 
 Name:           open5gs
 Version:        2.7.7
@@ -587,6 +587,14 @@ fi
 %{_unitdir}/open5gs-upfd.service
 
 %changelog
+* Sun Mar 29 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-11
+- mme: fix Create Session Response rejection handling; MME was checking
+  for PGW S5C TEID and PAA before checking the cause value, so a
+  forwarded PGW rejection (e.g. Cause:125 no PCRF) was misclassified
+  as Cause:103 (Conditional IE missing); now checks cause first and
+  jumps to failure path for any non-accepted cause, matching the same
+  fix applied to SGW-C in 2.7.7-10
+
 * Sun Mar 29 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-10
 - sgwc: fix Create Session Response rejection forwarding; when PGW
   rejects CSR the SGW-C was checking for mandatory IEs before checking

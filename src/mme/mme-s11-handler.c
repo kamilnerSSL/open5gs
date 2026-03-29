@@ -328,6 +328,19 @@ void mme_s11_handle_create_session_response(
         goto fail;
     }
 
+    /* For non-accepted responses (e.g. PGW rejection forwarded by SGW-C),
+     * PGW S5C TEID and PAA are absent by design — skip those checks. */
+    if (session_cause != OGS_GTP2_CAUSE_REQUEST_ACCEPTED &&
+        session_cause != OGS_GTP2_CAUSE_REQUEST_ACCEPTED_PARTIALLY &&
+        session_cause !=
+            OGS_GTP2_CAUSE_NEW_PDN_TYPE_DUE_TO_NETWORK_PREFERENCE &&
+        session_cause !=
+            OGS_GTP2_CAUSE_NEW_PDN_TYPE_DUE_TO_SINGLE_ADDRESS_BEARER_ONLY) {
+        fail_cause = session_cause;
+        fail_reason = "Session Cause not accepted";
+        goto fail;
+    }
+
     switch (create_action) {
     case OGS_GTP_CREATE_IN_PATH_SWITCH_REQUEST:
         /* No need for PAA or S5C TEID in PathSwitchRequest */
