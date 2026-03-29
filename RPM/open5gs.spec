@@ -3,7 +3,7 @@
 
 # basesuffix identifies your packaging (always appended to Release).
 %global basesuffix .sslconsult
-%global releaseNum 9
+%global releaseNum 10
 
 Name:           open5gs
 Version:        2.7.7
@@ -587,6 +587,16 @@ fi
 %{_unitdir}/open5gs-upfd.service
 
 %changelog
+* Sun Mar 29 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-10
+- sgwc: fix Create Session Response rejection forwarding; when PGW
+  rejects CSR the SGW-C was checking for mandatory IEs before checking
+  the cause, overriding the real PGW cause with 103 (Conditional IE
+  missing) and sending a response without the SGW S11 TEID, causing
+  MME to fail with "No S11 TEID"; now forwards PGW cause correctly
+  with SGW S11 TEID included per TS 29.274 §7.2.2
+- smf: map Diameter Result-Code 3002 (UNABLE_TO_DELIVER) to GTP cause
+  REMOTE_PEER_NOT_RESPONDING (52) instead of UE_NOT_AUTHORISED
+
 * Sat Mar 28 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-9
 - sgwc: fix crash in multi-PDN Modify Bearer forwarding; s5c_xact had
   assoc_xact_id set to s11_xact->id but s11_xact->assoc_xact_id was
