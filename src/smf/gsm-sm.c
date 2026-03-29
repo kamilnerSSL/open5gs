@@ -51,6 +51,9 @@ static uint8_t gtp_cause_from_diameter(uint8_t gtp_version,
         switch (dia_err) {
         case OGS_DIAM_UNKNOWN_SESSION_ID:
             return OGS_GTP2_CAUSE_APN_ACCESS_DENIED_NO_SUBSCRIPTION;
+        case OGS_DIAM_UNABLE_TO_DELIVER:
+            /* PCRF unreachable — transient failure, tell the peer to retry */
+            return OGS_GTP2_CAUSE_REMOTE_PEER_NOT_RESPONDING;
         }
         break;
     }

@@ -140,10 +140,64 @@ void sgwc_s5c_handle_create_session_response(
         return;
     }
 
+    /*
+     * PGW rejected the Create Session Request.  Forward the rejection to
+     * the MME including the SGW's own S11 TEID so the MME can identify the
+     * response.  Per TS 29.274 §7.2.2, the Sender F-TEID for Control Plane
+     * must be present in Create Session Responses on S11 regardless of cause.
+     *
+     * Do this BEFORE checking for IEs that will only be absent because the
+     * response is a rejection (no TEID, no PAA); those checks must only run
+     * for accepted responses.
+     */
+    if (session_cause != OGS_GTP2_CAUSE_REQUEST_ACCEPTED) {
+        ogs_gtp2_message_t rej_msg;
+        ogs_gtp2_create_session_response_t *rej_rsp;
+        ogs_gtp2_cause_t rej_cause;
+        ogs_gtp2_f_teid_t sgw_s11_teid;
+        int sgw_s11_len;
+        ogs_pkbuf_t *pkbuf;
+
+        ogs_error("PGW rejected Create Session Request [Cause:%d] — "
+                  "forwarding to MME", session_cause);
+
+        memset(&rej_msg, 0, sizeof(rej_msg));
+        rej_rsp = &rej_msg.create_session_response;
+
+        memset(&rej_cause, 0, sizeof(rej_cause));
+        rej_cause.value = session_cause;
+        rej_rsp->cause.presence = 1;
+        rej_rsp->cause.data = &rej_cause;
+        rej_rsp->cause.len = sizeof(rej_cause);
+
+        memset(&sgw_s11_teid, 0, sizeof(sgw_s11_teid));
+        sgw_s11_teid.interface_type = OGS_GTP2_F_TEID_S11_S4_SGW_GTP_C;
+        sgw_s11_teid.teid = htobe32(sgwc_ue->sgw_s11_teid);
+        rv = ogs_gtp2_sockaddr_to_f_teid(
+                ogs_gtp_self()->gtpc_addr, ogs_gtp_self()->gtpc_addr6,
+                &sgw_s11_teid, &sgw_s11_len);
+        ogs_assert(rv == OGS_OK);
+        rej_rsp->sender_f_teid_for_control_plane.presence = 1;
+        rej_rsp->sender_f_teid_for_control_plane.data = &sgw_s11_teid;
+        rej_rsp->sender_f_teid_for_control_plane.len = sgw_s11_len;
+
+        rej_msg.h.type = OGS_GTP2_CREATE_SESSION_RESPONSE_TYPE;
+        rej_msg.h.teid = sgwc_ue->mme_s11_teid;
+
+        pkbuf = ogs_gtp2_build_msg(&rej_msg);
+        if (pkbuf) {
+            rv = ogs_gtp_xact_update_tx(s11_xact, &rej_msg.h, pkbuf);
+            if (rv == OGS_OK)
+                ogs_gtp_xact_commit(s11_xact);
+        }
+        return;
+    }
+
     /*****************************************
      * Check Mandatory/Conditional IE Missing
      *****************************************/
     ogs_assert(cause_value == OGS_GTP2_CAUSE_REQUEST_ACCEPTED);
+    ogs_assert(session_cause == OGS_GTP2_CAUSE_REQUEST_ACCEPTED);
 
     if (rsp->pgw_s5_s8__s2a_s2b_f_teid_for_pmip_based_interface_or_for_gtp_based_control_plane_interface.presence == 0) {
         ogs_error("No GTP TEID [Cause:%d]", session_cause);
