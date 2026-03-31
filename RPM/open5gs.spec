@@ -3,7 +3,7 @@
 
 # basesuffix identifies your packaging (always appended to Release).
 %global basesuffix .sslconsult
-%global releaseNum 11
+%global releaseNum 12
 
 Name:           open5gs
 Version:        2.7.7
@@ -587,6 +587,13 @@ fi
 %{_unitdir}/open5gs-upfd.service
 
 %changelog
+* Tue Mar 31 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-12
+- smf: respond to PCO container IDs 0x0023 (PDU Session ID) and 0x0024
+  (EPS Bearer Identity) instead of logging unknown-PCO warnings; 0x0023
+  returns the session's 5G PSI if present (4G/5G interworking) or 0x00
+  for pure-4G deployments; 0x0024 returns the default bearer EBI for
+  5G-to-4G handover correlation; both per 3GPP TS 24.301 §10.5.6.3
+
 * Sun Mar 29 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-11
 - mme: fix Create Session Response rejection handling; MME was checking
   for PGW S5C TEID and PAA before checking the cause value, so a
