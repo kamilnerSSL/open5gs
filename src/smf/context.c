@@ -3125,6 +3125,8 @@ int smf_pco_build(uint8_t *pco_buf, uint8_t *buffer, int length,
     int size = 0;
     int i = 0;
     uint16_t mtu = 0;
+    uint8_t pco_pdu_session_id = 0x00;
+    uint8_t pco_ebi = 0;
     bool p_cscf_added = false;
     bool force_pcscf = false;
     if (sess && sess->session.name) {
@@ -3364,6 +3366,27 @@ int smf_pco_build(uint8_t *pco_buf, uint8_t *buffer, int length,
              */
             ogs_debug("UE indicated support for 3GPP PS data off, not adding to response PCO");
             break;
+        case OGS_PCO_ID_5GSM_CAUSE_VALUE:
+            /* PDU Session ID: return the 5G PSI if present, else 0x00 */
+            pco_pdu_session_id = (sess && sess->psi) ? sess->psi : 0x00;
+            smf.ids[smf.num_of_id].id = ue.ids[i].id;
+            smf.ids[smf.num_of_id].len = 1;
+            smf.ids[smf.num_of_id].data = &pco_pdu_session_id;
+            smf.num_of_id++;
+            break;
+        case OGS_PCO_ID_EPS_BEARER_IDENTITY_ALLOCATION: {
+            smf_bearer_t *default_bearer = NULL;
+            if (sess)
+                default_bearer = smf_default_bearer_in_sess(sess);
+            if (default_bearer && default_bearer->ebi) {
+                pco_ebi = default_bearer->ebi;
+                smf.ids[smf.num_of_id].id = ue.ids[i].id;
+                smf.ids[smf.num_of_id].len = 1;
+                smf.ids[smf.num_of_id].data = &pco_ebi;
+                smf.num_of_id++;
+            }
+            break;
+        }
         default:
             ogs_warn("Unknown PCO ID:(0x%x)", ue.ids[i].id);
         }
