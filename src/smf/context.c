@@ -3316,9 +3316,6 @@ int smf_pco_build(uint8_t *pco_buf, uint8_t *buffer, int length)
                 smf.num_of_id++;
             }
             break;
-        case OGS_PCO_ID_IP_ADDRESS_ALLOCATION_VIA_NAS_SIGNALLING:
-            /* TODO */
-            break;
         case OGS_PCO_ID_MS_SUPPORTS_BCM:
             /* TODO */
             break;
