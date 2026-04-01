@@ -284,7 +284,7 @@ void upf_pfcp_state_associated(ogs_fsm_t *s, upf_event_t *e)
                 sess, xact, &message->pfcp_session_report_response);
             break;
         case OGS_PFCP_ASSOCIATION_RELEASE_REQUEST_TYPE:
-            ogs_pfcp_up_handle_association_release_request(node, xact,
+            upf_n4_handle_association_release_request(node, xact,
                     &message->pfcp_association_release_request);
             OGS_FSM_TRAN(s, upf_pfcp_state_will_associate);
             break;

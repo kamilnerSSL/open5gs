@@ -38,6 +38,9 @@ int upf_pfcp_send_session_modification_response(
 int upf_pfcp_send_session_deletion_response(ogs_pfcp_xact_t *xact,
         upf_sess_t *sess);
 
+int upf_pfcp_send_association_release_response(
+        ogs_pfcp_xact_t *xact);
+
 int upf_pfcp_send_session_report_request(
         upf_sess_t *sess, ogs_pfcp_user_plane_report_t *report);
 

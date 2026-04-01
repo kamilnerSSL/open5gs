@@ -319,6 +319,36 @@ int upf_pfcp_send_session_deletion_response(ogs_pfcp_xact_t *xact,
     return rv;
 }
 
+int upf_pfcp_send_association_release_response(
+        ogs_pfcp_xact_t *xact)
+{
+    int rv;
+    ogs_pkbuf_t *n4buf = NULL;
+    ogs_pfcp_header_t h;
+
+    ogs_assert(xact);
+
+    memset(&h, 0, sizeof(ogs_pfcp_header_t));
+    h.type = OGS_PFCP_ASSOCIATION_RELEASE_RESPONSE_TYPE;
+
+    n4buf = upf_n4_build_association_release_response(h.type);
+    if (!n4buf) {
+        ogs_error("upf_n4_build_association_release_response() failed");
+        return OGS_ERROR;
+    }
+
+    rv = ogs_pfcp_xact_update_tx(xact, &h, n4buf);
+    if (rv != OGS_OK) {
+        ogs_error("ogs_pfcp_xact_update_tx() failed");
+        return OGS_ERROR;
+    }
+
+    rv = ogs_pfcp_xact_commit(xact);
+    ogs_expect(rv == OGS_OK);
+
+    return rv;
+}
+
 static void sess_timeout(ogs_pfcp_xact_t *xact, void *data)
 {
     upf_sess_t *sess = NULL;
