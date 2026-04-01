@@ -1096,7 +1096,8 @@ int smf_5gc_n4_handle_session_deletion_response(
         char *strerror = ogs_msprintf(
                 "[%d] PFCP Cause [%d] : Not Accepted", trigger, rsp->cause.u8);
 
-        if (trigger == OGS_PFCP_DELETE_TRIGGER_LOCAL_INITIATED) {
+        if (trigger == OGS_PFCP_DELETE_TRIGGER_LOCAL_INITIATED ||
+            trigger == OGS_PFCP_DELETE_TRIGGER_NODE_RELEASED) {
 
             /* Nothing */
 

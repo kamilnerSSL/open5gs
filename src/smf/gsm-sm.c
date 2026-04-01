@@ -2210,11 +2210,23 @@ void smf_gsm_state_wait_pfcp_deletion(ogs_fsm_t *s, smf_event_t *e)
                             sess, pfcp_xact,
                             &pfcp_message->pfcp_session_deletion_response);
                 if (pfcp_cause != OGS_PFCP_CAUSE_REQUEST_ACCEPTED) {
+                    if (!gtp_xact) {
+                        /* Fire-and-forget shutdown deletion: no GTP peer
+                         * to notify, just log and drop. */
+                        ogs_warn("EPC session deletion failed during "
+                                 "graceful shutdown [cause:%d]", pfcp_cause);
+                        break;
+                    }
                     /* FIXME: tear down Gy and Gx */
-                    ogs_assert(gtp_xact);
                     gtp_cause = gtp_cause_from_pfcp(
                             pfcp_cause, gtp_xact->gtp_version);
                     send_gtp_delete_err_msg(sess, gtp_xact, gtp_cause);
+                    break;
+                }
+                if (!gtp_xact) {
+                    /* Fire-and-forget shutdown deletion succeeded:
+                     * skip Gx/Gy CCR (PCRF/OCS will learn when the
+                     * Diameter connection drops). */
                     break;
                 }
                 if (send_ccr_termination_req_gx_gy_s6b(
@@ -2246,7 +2258,11 @@ void smf_gsm_state_wait_pfcp_deletion(ogs_fsm_t *s, smf_event_t *e)
                     break;
                 }
 
-                if (trigger == OGS_PFCP_DELETE_TRIGGER_LOCAL_INITIATED) {
+                if (trigger == OGS_PFCP_DELETE_TRIGGER_NODE_RELEASED) {
+
+                    SMF_SESS_CLEAR(sess);
+
+                } else if (trigger == OGS_PFCP_DELETE_TRIGGER_LOCAL_INITIATED) {
 
                     ogs_error("OLD Session Released");
                     OGS_FSM_TRAN(s, smf_gsm_state_5gc_session_will_deregister);

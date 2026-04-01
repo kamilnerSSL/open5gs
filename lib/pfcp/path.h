@@ -70,6 +70,8 @@ int ogs_pfcp_cp_send_association_setup_request(ogs_pfcp_node_t *node,
         void (*cb)(ogs_pfcp_xact_t *xact, void *data));
 int ogs_pfcp_cp_send_association_setup_response(ogs_pfcp_xact_t *xact,
         uint8_t cause);
+int ogs_pfcp_cp_send_association_release_request(ogs_pfcp_node_t *node,
+        void (*cb)(ogs_pfcp_xact_t *xact, void *data));
 
 int ogs_pfcp_up_send_association_setup_request(ogs_pfcp_node_t *node,
         void (*cb)(ogs_pfcp_xact_t *xact, void *data));

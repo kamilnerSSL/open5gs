@@ -167,6 +167,44 @@ ogs_pkbuf_t *ogs_pfcp_cp_build_association_setup_response(uint8_t type,
     return pkbuf;
 }
 
+ogs_pkbuf_t *ogs_pfcp_cp_build_association_release_request(uint8_t type)
+{
+    ogs_pfcp_message_t *pfcp_message = NULL;
+    ogs_pfcp_association_release_request_t *req = NULL;
+    ogs_pkbuf_t *pkbuf = NULL;
+
+    ogs_pfcp_node_id_t node_id;
+    int node_id_len = 0, rv;
+
+    ogs_debug("Association Release Request");
+
+    pfcp_message = ogs_calloc(1, sizeof(*pfcp_message));
+    if (!pfcp_message) {
+        ogs_error("ogs_calloc() failed");
+        return NULL;
+    }
+
+    req = &pfcp_message->pfcp_association_release_request;
+
+    rv = ogs_pfcp_sockaddr_to_node_id(&node_id, &node_id_len);
+    if (rv != OGS_OK) {
+        ogs_error("ogs_pfcp_sockaddr_to_node_id() failed");
+        ogs_free(pfcp_message);
+        return NULL;
+    }
+    req->node_id.presence = 1;
+    req->node_id.data = &node_id;
+    req->node_id.len = node_id_len;
+
+    pfcp_message->h.type = type;
+    pkbuf = ogs_pfcp_build_msg(pfcp_message);
+    ogs_expect(pkbuf);
+
+    ogs_free(pfcp_message);
+
+    return pkbuf;
+}
+
 ogs_pkbuf_t *ogs_pfcp_up_build_association_setup_request(uint8_t type)
 {
     ogs_pfcp_message_t *pfcp_message = NULL;

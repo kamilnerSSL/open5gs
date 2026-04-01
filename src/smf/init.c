@@ -106,6 +106,8 @@ static ogs_timer_t *t_termination_holding = NULL;
 static void event_termination(void)
 {
     ogs_sbi_nf_instance_t *nf_instance = NULL;
+    ogs_pfcp_node_t *pfcp_node = NULL;
+    smf_ue_t *smf_ue = NULL;
 
     /* Sending NF Instance De-registration to NRF */
     ogs_list_for_each(&ogs_sbi_self()->nf_instance_list, nf_instance)
@@ -114,10 +116,58 @@ static void event_termination(void)
     /* Gracefully shutdown the server by sending GOAWAY to each session. */
     ogs_sbi_server_graceful_shutdown_all();
 
-    /* Starting holding timer */
+    /*
+     * Graceful PFCP teardown: send Session Deletion Requests for all active
+     * sessions so that the UPF can release GTP-U resources before we exit.
+     * This prevents stale TEIDs and Error Indication storms on the SGW-U.
+     *
+     * For 5GC sessions we use OGS_PFCP_DELETE_TRIGGER_NODE_RELEASED so the
+     * response handler calls SMF_SESS_CLEAR() and removes the session while
+     * the event loop is still running.  For EPC sessions we pass
+     * OGS_INVALID_POOL_ID as the associated GTP transaction; the response
+     * handler detects this (NULL gtp_xact) and skips the Gx/Gy CCR path.
+     */
+    ogs_list_for_each(&smf_self()->smf_ue_list, smf_ue) {
+        smf_sess_t *sess = NULL;
+        ogs_list_for_each(&smf_ue->sess_list, sess) {
+            if (!sess->pfcp_node)
+                continue;
+            if (!OGS_FSM_CHECK(&sess->pfcp_node->sm,
+                               smf_pfcp_state_associated))
+                continue;
+            if (sess->epc) {
+                ogs_info("Graceful shutdown: EPC session IMSI[%s] APN[%s]",
+                         smf_ue->imsi_bcd, sess->session.name);
+                smf_epc_pfcp_send_session_deletion_request(
+                        sess, OGS_INVALID_POOL_ID);
+            } else {
+                ogs_info("Graceful shutdown: 5GC session SUPI[%s] DNN[%s]",
+                         smf_ue->supi, sess->session.name);
+                smf_5gc_pfcp_send_session_deletion_request(
+                        sess, NULL,
+                        OGS_PFCP_DELETE_TRIGGER_NODE_RELEASED);
+            }
+        }
+    }
+
+    /* Send PFCP Association Release Request to each associated UPF node. */
+    ogs_list_for_each(&ogs_pfcp_self()->pfcp_peer_list, pfcp_node) {
+        if (!OGS_FSM_CHECK(&pfcp_node->sm, smf_pfcp_state_associated))
+            continue;
+        ogs_info("Graceful shutdown: releasing PFCP association with %s",
+                 ogs_sockaddr_to_string_static(pfcp_node->addr_list));
+        ogs_pfcp_cp_send_association_release_request(pfcp_node, NULL);
+    }
+
+    /*
+     * Hold the event loop open for up to 3 seconds so the UPF has time to
+     * respond to the deletion requests above.  Any sessions that receive
+     * a response will be freed by their handler; the rest will be cleaned
+     * up by smf_context_final() after the loop exits.
+     */
     t_termination_holding = ogs_timer_add(ogs_app()->timer_mgr, NULL, NULL);
     ogs_assert(t_termination_holding);
-#define TERMINATION_HOLDING_TIME ogs_time_from_msec(300)
+#define TERMINATION_HOLDING_TIME ogs_time_from_msec(3000)
     ogs_timer_start(t_termination_holding, TERMINATION_HOLDING_TIME);
 
     /* Sending termination event to the queue */
