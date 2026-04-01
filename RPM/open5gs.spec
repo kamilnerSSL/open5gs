@@ -3,7 +3,7 @@
 
 # basesuffix identifies your packaging (always appended to Release).
 %global basesuffix .sslconsult
-%global releaseNum 13
+%global releaseNum 14
 
 Name:           open5gs
 Version:        2.7.7
@@ -587,6 +587,9 @@ fi
 %{_unitdir}/open5gs-upfd.service
 
 %changelog
+* Wed Apr 01 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-14
+- upf: implements PFCP graceful restart message to support
+  smf graceful shutdown/restart
 * Wed Apr 01 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-13
 - smf: Add minimal support for PCO option 0x1a. This is defined as
   "IP address allocation via NAS signalling only" which is the default
