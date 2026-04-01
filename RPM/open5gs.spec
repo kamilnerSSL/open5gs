@@ -3,7 +3,7 @@
 
 # basesuffix identifies your packaging (always appended to Release).
 %global basesuffix .sslconsult
-%global releaseNum 12
+%global releaseNum 13
 
 Name:           open5gs
 Version:        2.7.7
@@ -587,6 +587,12 @@ fi
 %{_unitdir}/open5gs-upfd.service
 
 %changelog
+* Wed Apr 01 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-13
+- smf: Add minimal support for PCO option 0x1a. This is defined as
+  "IP address allocation via NAS signalling only" which is the default
+  capability on Open5GS anyway. In this case, the SMF just needs to accept
+  this message, and does not need to return any response. Normally, no
+  other action is required.
 * Tue Mar 31 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-12
 - smf: respond to PCO container IDs 0x0023 (PDU Session ID) and 0x0024
   (EPS Bearer Identity) instead of logging unknown-PCO warnings; 0x0023
