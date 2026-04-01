@@ -326,6 +326,44 @@ int ogs_pfcp_cp_send_association_setup_response(ogs_pfcp_xact_t *xact,
     return rv;
 }
 
+int ogs_pfcp_cp_send_association_release_request(ogs_pfcp_node_t *node,
+        void (*cb)(ogs_pfcp_xact_t *xact, void *data))
+{
+    int rv;
+    ogs_pkbuf_t *pkbuf = NULL;
+    ogs_pfcp_header_t h;
+    ogs_pfcp_xact_t *xact = NULL;
+
+    ogs_assert(node);
+
+    memset(&h, 0, sizeof(ogs_pfcp_header_t));
+    h.type = OGS_PFCP_ASSOCIATION_RELEASE_REQUEST_TYPE;
+    h.seid = 0;
+
+    xact = ogs_pfcp_xact_local_create(node, cb, node);
+    if (!xact) {
+        ogs_error("ogs_pfcp_xact_local_create() failed");
+        return OGS_ERROR;
+    }
+
+    pkbuf = ogs_pfcp_cp_build_association_release_request(h.type);
+    if (!pkbuf) {
+        ogs_error("ogs_pfcp_cp_build_association_release_request() failed");
+        return OGS_ERROR;
+    }
+
+    rv = ogs_pfcp_xact_update_tx(xact, &h, pkbuf);
+    if (rv != OGS_OK) {
+        ogs_error("ogs_pfcp_xact_update_tx() failed");
+        return OGS_ERROR;
+    }
+
+    rv = ogs_pfcp_xact_commit(xact);
+    ogs_expect(rv == OGS_OK);
+
+    return rv;
+}
+
 int ogs_pfcp_up_send_association_setup_request(ogs_pfcp_node_t *node,
         void (*cb)(ogs_pfcp_xact_t *xact, void *data))
 {

@@ -330,7 +330,8 @@ static void sess_5gc_timeout(ogs_pfcp_xact_t *xact, void *data)
         ogs_error("%s", strerror);
 
         if (trigger == OGS_PFCP_DELETE_TRIGGER_LOCAL_INITIATED ||
-            trigger == OGS_PFCP_DELETE_TRIGGER_PCF_INITIATED) {
+            trigger == OGS_PFCP_DELETE_TRIGGER_PCF_INITIATED ||
+            trigger == OGS_PFCP_DELETE_TRIGGER_NODE_RELEASED) {
 
             /* Nothing */
 
