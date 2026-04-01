@@ -507,3 +507,15 @@ void upf_n4_handle_session_report_response(
     }
 
 }
+
+void upf_n4_handle_association_release_request(ogs_pfcp_node_t *node,
+        ogs_pfcp_xact_t *xact, ogs_pfcp_association_release_request_t *request)
+{
+    ogs_assert(node);
+    ogs_assert(xact);
+    ogs_assert(request);
+
+    ogs_info("PFCP Association Release Request");
+
+    upf_pfcp_send_association_release_response(xact);
+}

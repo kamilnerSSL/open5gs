@@ -3,7 +3,7 @@
 
 # basesuffix identifies your packaging (always appended to Release).
 %global basesuffix .sslconsult
-%global releaseNum 14
+%global releaseNum 15
 
 Name:           open5gs
 Version:        2.7.7
@@ -587,6 +587,14 @@ fi
 %{_unitdir}/open5gs-upfd.service
 
 %changelog
+* Wed Apr 01 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-15
+- smf: graceful PFCP session teardown on SIGTERM; iterates all active
+  sessions and sends PFCP Session Deletion Requests to the UPF before
+  exiting, then sends PFCP Association Release Requests to each UPF peer.
+  Holds the event loop open for up to 3 s to receive responses. Prevents
+  stale GTP-U TEIDs and Error Indication storms on SGW-U after SMF restart.
+- upf: handle PFCP Association Release Request from SMF; send Association
+  Release Response and transition FSM back to will_associate state.
 * Wed Apr 01 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-14
 - upf: implements PFCP graceful restart message to support
   smf graceful shutdown/restart

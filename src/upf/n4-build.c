@@ -142,3 +142,44 @@ ogs_pkbuf_t *upf_n4_build_session_deletion_response(uint8_t type,
     return ogs_pfcp_build_session_deletion_response(type, OGS_PFCP_CAUSE_REQUEST_ACCEPTED,
                                                     &report);
 }
+
+ogs_pkbuf_t *upf_n4_build_association_release_response(
+    uint8_t type)
+{
+    ogs_pfcp_message_t *pfcp_message = NULL;
+    ogs_pfcp_association_release_response_t *rsp = NULL;
+    ogs_pkbuf_t *pkbuf = NULL;
+
+    ogs_pfcp_node_id_t node_id;
+    int len = 0;
+
+    ogs_debug("Association Release Response");
+
+    pfcp_message = ogs_calloc(1, sizeof(*pfcp_message));
+    if (!pfcp_message) {
+        ogs_error("ogs_calloc() failed");
+        return NULL;
+    }
+
+    rsp = &pfcp_message->pfcp_association_release_response;
+
+    if (ogs_pfcp_sockaddr_to_node_id(&node_id, &len) != OGS_OK) {
+        ogs_error("ogs_pfcp_sockaddr_to_node_id() failed");
+        ogs_free(pfcp_message);
+        return NULL;
+    }
+    rsp->node_id.presence = 1;
+    rsp->node_id.data = &node_id;
+    rsp->node_id.len = len;
+
+    rsp->cause.presence = 1;
+    rsp->cause.u8 = OGS_PFCP_CAUSE_REQUEST_ACCEPTED;
+
+    pfcp_message->h.type = type;
+    pkbuf = ogs_pfcp_build_msg(pfcp_message);
+    ogs_expect(pkbuf);
+
+    ogs_free(pfcp_message);
+
+    return pkbuf;
+}
