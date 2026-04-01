@@ -3340,9 +3340,6 @@ int smf_pco_build(uint8_t *pco_buf, uint8_t *buffer, int length,
                 smf.num_of_id++;
             }
             break;
-        case OGS_PCO_ID_IP_ADDRESS_ALLOCATION_VIA_NAS_SIGNALLING:
-            /* TODO */
-            break;
         case OGS_PCO_ID_MS_SUPPORTS_BCM:
             /* TODO */
             break;
@@ -3351,6 +3348,10 @@ int smf_pco_build(uint8_t *pco_buf, uint8_t *buffer, int length,
             smf.ids[smf.num_of_id].len = 0;
             smf.ids[smf.num_of_id].data = 0;
             smf.num_of_id++;
+            break;
+        case OGS_PCO_ID_IP_ADDRESS_ALLOCATION_VIA_NAS_SIGNALLING:
+            /* The UE indicates that it will only use the IP address allocated via NAS signalling. */
+            /* The network does not include this PCO in the response. */
             break;
         case OGS_PCO_ID_P_CSCF_RE_SELECTION_SUPPORT:
             /* TODO */
