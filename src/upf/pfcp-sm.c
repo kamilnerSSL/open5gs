@@ -283,6 +283,11 @@ void upf_pfcp_state_associated(ogs_fsm_t *s, upf_event_t *e)
             upf_n4_handle_session_report_response(
                 sess, xact, &message->pfcp_session_report_response);
             break;
+        case OGS_PFCP_ASSOCIATION_RELEASE_REQUEST_TYPE:
+            ogs_pfcp_up_handle_association_release_request(node, xact,
+                    &message->pfcp_association_release_request);
+            OGS_FSM_TRAN(s, upf_pfcp_state_will_associate);
+            break;
         default:
             ogs_error("Not implemented PFCP message type[%d]",
                     message->h.type);
