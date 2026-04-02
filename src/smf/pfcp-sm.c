@@ -288,6 +288,15 @@ void smf_pfcp_state_associated(ogs_fsm_t *s, smf_event_t *e)
                     ogs_sockaddr_to_string_static(node->addr_list));
             ogs_pfcp_cp_handle_association_setup_request(node, xact,
                     &message->pfcp_association_setup_request);
+            if (node->restoration_required == true) {
+                if (node->t_association) {
+                    OGS_FSM_TRAN(s, smf_pfcp_state_will_associate);
+                } else {
+                    pfcp_restoration(node);
+                    node->restoration_required = false;
+                    ogs_error("PFCP restoration");
+                }
+            }
             break;
         case OGS_PFCP_ASSOCIATION_SETUP_RESPONSE_TYPE:
             ogs_warn("PFCP[RSP] has already been associated %s",
@@ -524,14 +533,9 @@ static void reselect_upf(ogs_pfcp_node_t *node)
         ogs_list_for_each_safe(&smf_ue->sess_list, next_sess, sess) {
 
             if (node == sess->pfcp_node) {
-                if (sess->epc) {
-                    ogs_error("[%s:%s] EPC restoration is not implemented",
-                            smf_ue->imsi_bcd, sess->session.name);
-                } else {
-                    smf_trigger_session_release(
-                            sess, NULL,
-                            OGS_PFCP_DELETE_TRIGGER_SMF_INITIATED);
-                }
+                smf_trigger_session_release(
+                        sess, NULL,
+                        OGS_PFCP_DELETE_TRIGGER_UPF_FAILURE);
             }
         }
     }
