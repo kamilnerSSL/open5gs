@@ -134,6 +134,21 @@ bool ogs_pfcp_cp_handle_association_setup_request(
         ogs_warn("F-TEID allocation/release not supported with peer %s",
                 ogs_sockaddr_to_string_static(node->addr_list));
 
+    if (req->recovery_time_stamp.presence) {
+        if (node->remote_recovery == 0 ||
+            node->remote_recovery == req->recovery_time_stamp.u32) {
+        } else if (node->remote_recovery < req->recovery_time_stamp.u32) {
+            ogs_error("Remote PFCP restarted [%u<%u] in Association Setup REQ",
+                node->remote_recovery, req->recovery_time_stamp.u32);
+            node->restoration_required = true;
+        } else if (node->remote_recovery > req->recovery_time_stamp.u32) {
+            ogs_error(
+                "Invalid Recovery Time Stamp [%u>%u] in Association Setup REQ",
+                node->remote_recovery, req->recovery_time_stamp.u32);
+        }
+        node->remote_recovery = req->recovery_time_stamp.u32;
+    }
+
     return true;
 }
 
@@ -180,6 +195,21 @@ bool ogs_pfcp_cp_handle_association_setup_response(
     if (node->up_function_features.ftup == 0)
         ogs_warn("F-TEID allocation/release not supported with peer %s",
                 ogs_sockaddr_to_string_static(node->addr_list));
+
+    if (rsp->recovery_time_stamp.presence) {
+        if (node->remote_recovery == 0 ||
+            node->remote_recovery == rsp->recovery_time_stamp.u32) {
+        } else if (node->remote_recovery < rsp->recovery_time_stamp.u32) {
+            ogs_error("Remote PFCP restarted [%u<%u] in Association Setup RSP",
+                node->remote_recovery, rsp->recovery_time_stamp.u32);
+            node->restoration_required = true;
+        } else if (node->remote_recovery > rsp->recovery_time_stamp.u32) {
+            ogs_error(
+                "Invalid Recovery Time Stamp [%u>%u] in Association Setup RSP",
+                node->remote_recovery, rsp->recovery_time_stamp.u32);
+        }
+        node->remote_recovery = rsp->recovery_time_stamp.u32;
+    }
 
     return true;
 }

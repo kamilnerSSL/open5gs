@@ -2128,6 +2128,25 @@ void smf_gsm_state_operational(ogs_fsm_t *s, smf_event_t *e)
 
             OGS_FSM_TRAN(s, smf_gsm_state_wait_5gc_n1_n2_release);
 
+        } else if (sess->epc &&
+                   e->h.sbi.state == OGS_PFCP_DELETE_TRIGGER_UPF_FAILURE) {
+            /*
+             * UPF has failed: PFCP sessions are gone, no deletion request
+             * needed. For GTPv2 sessions, fire a Delete Bearer Request toward
+             * SGW so it can release the bearer context; then run Gx/Gy/S6b
+             * CCR-Termination and wait for their answers before releasing.
+             */
+            if (sess->gtp.version == 2) {
+                smf_bearer_t *linked_bearer =
+                    ogs_list_first(&sess->bearer_list);
+                if (linked_bearer)
+                    smf_gtp2_send_delete_bearer_request(linked_bearer,
+                        OGS_NAS_PROCEDURE_TRANSACTION_IDENTITY_UNASSIGNED,
+                        OGS_GTP2_CAUSE_REACTIVATION_REQUESTED);
+            }
+            send_ccr_termination_req_gx_gy_s6b(sess, NULL);
+            OGS_FSM_TRAN(s, smf_gsm_state_wait_epc_auth_release);
+
         } else {
 
             OGS_FSM_TRAN(s, smf_gsm_state_wait_pfcp_deletion);
