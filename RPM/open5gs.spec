@@ -3,7 +3,7 @@
 
 # basesuffix identifies your packaging (always appended to Release).
 %global basesuffix .sslconsult
-%global releaseNum 15
+%global releaseNum 16
 
 Name:           open5gs
 Version:        2.7.7
@@ -587,6 +587,14 @@ fi
 %{_unitdir}/open5gs-upfd.service
 
 %changelog
+* Wed Apr 02 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-16
+- smf: detect UPF restart via Recovery Timestamp in Association Setup
+  Request/Response handlers; triggers pfcp_restoration() when remote
+  timestamp increases, mirroring the existing heartbeat handler logic.
+- smf: handle UPF heartbeat timeout for EPC sessions; sends Delete
+  Bearer Request toward SGW (GTPv2, fire-and-forget) then runs
+  Gx/Gy/S6b CCR-Termination via smf_gsm_state_wait_epc_auth_release,
+  replacing the previous "EPC restoration is not implemented" stub.
 * Wed Apr 01 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-15
 - smf: graceful PFCP session teardown on SIGTERM; iterates all active
   sessions and sends PFCP Session Deletion Requests to the UPF before
