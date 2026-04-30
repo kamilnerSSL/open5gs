@@ -2128,6 +2128,58 @@ void smf_gsm_state_operational(ogs_fsm_t *s, smf_event_t *e)
 
             OGS_FSM_TRAN(s, smf_gsm_state_wait_5gc_n1_n2_release);
 
+        } else if (e->h.sbi.state == OGS_PFCP_DELETE_TRIGGER_SESSION_TIMEOUT) {
+            ogs_warn("[%s:%d] Session absolute timeout triggered",
+                smf_ue->supi, sess->psi);
+
+            if (sess->epc) {
+                /*
+                 * EPC session timed out: delete the PFCP session first,
+                 * then send CCR-Termination to PCRF/OCS in
+                 * smf_gsm_state_wait_pfcp_deletion.
+                 */
+                OGS_FSM_TRAN(s, smf_gsm_state_wait_pfcp_deletion);
+            } else {
+                /*
+                 * 5GC session timed out: perform network-requested PDU
+                 * session release toward the UE, same as SMF-initiated.
+                 */
+                if (HOME_ROUTED_ROAMING_IN_HSMF(sess)) {
+                    memset(&sess->nsmf_param, 0, sizeof(sess->nsmf_param));
+                    sess->nsmf_param.request_indication =
+                        OpenAPI_request_indication_NW_REQ_PDU_SES_REL;
+
+                    r = smf_sbi_discover_and_send(
+                            OGS_SBI_SERVICE_TYPE_NSMF_PDUSESSION, NULL,
+                            smf_nsmf_pdusession_build_vsmf_update_data,
+                            sess, NULL, e->h.sbi.state, NULL);
+                    ogs_expect(r == OGS_OK);
+                    ogs_assert(r != OGS_ERROR);
+                } else {
+                    smf_n1_n2_message_transfer_param_t param;
+
+                    memset(&param, 0, sizeof(param));
+                    param.state =
+                        SMF_UE_OR_NETWORK_REQUESTED_PDU_SESSION_RELEASE;
+                    sess->pti =
+                        OGS_NAS_PROCEDURE_TRANSACTION_IDENTITY_UNASSIGNED;
+                    param.n1smbuf = gsm_build_pdu_session_release_command(
+                        sess, OGS_5GSM_CAUSE_REACTIVATION_REQUESTED);
+                    ogs_assert(param.n1smbuf);
+
+                    param.n2smbuf =
+                        ngap_build_pdu_session_resource_release_command_transfer(
+                            sess, SMF_NGAP_STATE_DELETE_TRIGGER_SMF_INITIATED,
+                            NGAP_Cause_PR_nas, NGAP_CauseNas_normal_release);
+                    ogs_assert(param.n2smbuf);
+
+                    smf_namf_comm_send_n1_n2_message_transfer(
+                        sess, NULL, &param);
+                }
+
+                OGS_FSM_TRAN(s, smf_gsm_state_wait_5gc_n1_n2_release);
+            }
+
         } else if (sess->epc &&
                    e->h.sbi.state == OGS_PFCP_DELETE_TRIGGER_UPF_FAILURE) {
             /*
@@ -2190,7 +2242,8 @@ void smf_gsm_state_wait_pfcp_deletion(ogs_fsm_t *s, smf_event_t *e)
         /* Since `pfcp_xact->epc` is not available,
          * we'll use `sess->epc` */
         if (sess->epc) {
-            /* EPC */
+            /* EPC: remember the delete trigger for the response handler */
+            sess->del_trigger = e->h.sbi.state;
             gtp_xact = ogs_gtp_xact_find_by_id(e->gtp_xact_id);
             ogs_assert(OGS_OK ==
                 smf_epc_pfcp_send_session_deletion_request(
@@ -2243,9 +2296,24 @@ void smf_gsm_state_wait_pfcp_deletion(ogs_fsm_t *s, smf_event_t *e)
                     break;
                 }
                 if (!gtp_xact) {
-                    /* Fire-and-forget shutdown deletion succeeded:
-                     * skip Gx/Gy CCR (PCRF/OCS will learn when the
-                     * Diameter connection drops). */
+                    if (sess->del_trigger ==
+                            OGS_PFCP_DELETE_TRIGGER_SESSION_TIMEOUT) {
+                        /*
+                         * Session lifetime expired: PFCP deleted, now
+                         * send CCR-Termination to PCRF/OCS if configured.
+                         */
+                        if (send_ccr_termination_req_gx_gy_s6b(
+                                    sess, NULL) == true)
+                            OGS_FSM_TRAN(s,
+                                smf_gsm_state_wait_epc_auth_release);
+                        else
+                            OGS_FSM_TRAN(s,
+                                smf_gsm_state_session_will_release);
+                    } else {
+                        /* Fire-and-forget shutdown deletion succeeded:
+                         * skip Gx/Gy CCR (PCRF/OCS will learn when the
+                         * Diameter connection drops). */
+                    }
                     break;
                 }
                 if (send_ccr_termination_req_gx_gy_s6b(

@@ -155,6 +155,8 @@ typedef struct smf_context_s {
         const char *maximum_integrity_protected_data_rate_downlink;
     } security_indication;
 
+    ogs_time_t      session_timeout; /* 0 = disabled; absolute session lifetime */
+
 #define SMF_UE_IS_LAST_SESSION(__sMF) \
      ((__sMF) && (ogs_list_count(&(__sMF)->sess_list)) == 1)
     ogs_list_t      smf_ue_list;
@@ -718,6 +720,9 @@ typedef struct smf_sess_s {
 
     bool establishment_accept_sent;
     ogs_sbi_xact_t *pending_modification_xact;
+
+    ogs_timer_t     *t_sess_timeout;    /* absolute session lifetime timer */
+    int             del_trigger;        /* trigger reason stored across states */
 
 } smf_sess_t;
 
