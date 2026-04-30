@@ -3,7 +3,7 @@
 
 # basesuffix identifies your packaging (always appended to Release).
 %global basesuffix .sslconsult
-%global releaseNum 16
+%global releaseNum 17
 
 Name:           open5gs
 Version:        2.7.7
@@ -587,6 +587,14 @@ fi
 %{_unitdir}/open5gs-upfd.service
 
 %changelog
+* Wed Apr 30 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-17
+- smf: add absolute session timeout; new session_timeout key (seconds)
+  under smf: in smf.yaml terminates sessions that remain active longer
+  than the configured lifetime. Per-session ogs_timer_t fires
+  SMF_EVT_SESSION_RELEASE with a new OGS_PFCP_DELETE_TRIGGER_SESSION_TIMEOUT
+  trigger; 5GC sessions follow the normal network-requested PDU Session
+  Release path (N1/N2 command to UE); EPC sessions delete the PFCP
+  session then run Gx/Gy/S6b CCR-Termination. Disabled when unset or 0.
 * Wed Apr 02 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-16
 - smf: detect UPF restart via Recovery Timestamp in Association Setup
   Request/Response handlers; triggers pfcp_restoration() when remote
