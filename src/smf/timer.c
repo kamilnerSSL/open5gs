@@ -44,7 +44,9 @@ const char *smf_timer_get_name(int timer_id)
         return "SMF_TIMER_PFCP_NO_ESTABLISHMENT_RESPONSE";
     case SMF_TIMER_PFCP_NO_DELETION_RESPONSE:
         return "SMF_TIMER_PFCP_NO_DELETION_RESPONSE";
-    default: 
+    case SMF_TIMER_SESS_TIMEOUT:
+        return "SMF_TIMER_SESS_TIMEOUT";
+    default:
        break;
     }
 
@@ -66,6 +68,16 @@ static void timer_send_event(int timer_id, void *data)
         e->h.timer_id = timer_id;
         e->pfcp_node = data;
         break;
+    case SMF_TIMER_SESS_TIMEOUT: {
+        smf_sess_t *sess = data;
+        ogs_assert(sess);
+        e = smf_event_new(SMF_EVT_SESSION_RELEASE);
+        ogs_assert(e);
+        e->h.timer_id = timer_id;
+        e->sess_id = sess->id;
+        e->h.sbi.state = OGS_PFCP_DELETE_TRIGGER_SESSION_TIMEOUT;
+        break;
+    }
     default:
         ogs_fatal("Unknown timer id[%d]", timer_id);
         ogs_assert_if_reached();
@@ -88,4 +100,9 @@ void smf_timer_pfcp_association(void *data)
 void smf_timer_pfcp_no_heartbeat(void *data)
 {
     timer_send_event(SMF_TIMER_PFCP_NO_HEARTBEAT, data);
+}
+
+void smf_timer_sess_timeout(void *data)
+{
+    timer_send_event(SMF_TIMER_SESS_TIMEOUT, data);
 }

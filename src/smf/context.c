@@ -984,6 +984,11 @@ int smf_context_parse_config(void)
                                             &security_indication_iter);
                         }
                     }
+                } else if (!strcmp(smf_key, "session_timeout")) {
+                    const char *v = ogs_yaml_iter_value(&smf_iter);
+                    if (v)
+                        self.session_timeout =
+                            ogs_time_from_sec(atoi(v));
                 } else if (!strcmp(smf_key, "pfcp")) {
                     /* handle config in pfcp library */
                 } else if (!strcmp(smf_key, "upf")) {
@@ -1306,6 +1311,13 @@ smf_sess_t *smf_sess_add_by_apn(smf_ue_t *smf_ue, char *apn, uint8_t rat_type)
 
     stats_add_smf_session();
 
+    if (self.session_timeout > 0) {
+        sess->t_sess_timeout = ogs_timer_add(
+                ogs_app()->timer_mgr, smf_timer_sess_timeout, sess);
+        ogs_assert(sess->t_sess_timeout);
+        ogs_timer_start(sess->t_sess_timeout, self.session_timeout);
+    }
+
     return sess;
 }
 
@@ -1533,6 +1545,13 @@ smf_sess_t *smf_sess_add_by_psi(smf_ue_t *smf_ue, uint8_t psi)
 
     smf_metrics_inst_global_inc(SMF_METR_GLOB_GAUGE_PFCP_SESSIONS_ACTIVE);
     stats_add_smf_session();
+
+    if (self.session_timeout > 0) {
+        sess->t_sess_timeout = ogs_timer_add(
+                ogs_app()->timer_mgr, smf_timer_sess_timeout, sess);
+        ogs_assert(sess->t_sess_timeout);
+        ogs_timer_start(sess->t_sess_timeout, self.session_timeout);
+    }
 
     return sess;
 }
@@ -1948,6 +1967,11 @@ void smf_sess_remove(smf_sess_t *sess)
         ogs_free(sess->aaa_server_identifier.name);
     if (sess->aaa_server_identifier.realm)
         ogs_free(sess->aaa_server_identifier.realm);
+
+    if (sess->t_sess_timeout) {
+        ogs_timer_delete(sess->t_sess_timeout);
+        sess->t_sess_timeout = NULL;
+    }
 
     smf_bearer_remove_all(sess);
 
