@@ -144,7 +144,7 @@ void sgwc_cdr_close(sgwc_sess_t *sess, uint8_t cause)
     char sgw_addr[OGS_ADDRSTRLEN];
     char pgw_addr[OGS_ADDRSTRLEN];
     char chargchars[OGS_CHRGCHARS_LEN * 2 + 1];
-    char mnc_str[4];    /* 2 or 3 digits + NUL */
+    char mnc_str[6];    /* uint16_t decimal (max 5 digits) + NUL */
     int  mnc_len;
 
     ogs_assert(sess);
@@ -243,7 +243,7 @@ void sgwc_cdr_close(sgwc_sess_t *sess, uint8_t cause)
 
     /* Location info (conditional) */
     if (sgwc_ue->uli_presence) {
-        char tai_mnc[4], ecgi_mnc[4];
+        char tai_mnc[6], ecgi_mnc[6]; /* uint16_t decimal (max 5 digits) + NUL */
         int  tai_mnc_len, ecgi_mnc_len;
 
         tai_mnc_len = ogs_plmn_id_mnc_len(&sgwc_ue->e_tai.plmn_id);
