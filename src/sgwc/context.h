@@ -47,6 +47,10 @@ typedef struct sgwc_context_s {
     ogs_hash_t *sgwc_sxa_seid_hash; /* hash table (SGWC-SXA-SEID : Session) */
 
     ogs_list_t sgw_ue_list;    /* SGW_UE List */
+
+    /* Gz offline charging */
+    uint32_t    cdr_sequence;   /* monotonic CDR sequence counter */
+    char       *cdr_file;       /* path to CDR output file, NULL = disabled */
 } sgwc_context_t;
 
 typedef struct sgwc_ue_s {
@@ -62,10 +66,19 @@ typedef struct sgwc_ue_s {
     int             imsi_len;
     char            imsi_bcd[OGS_MAX_IMSI_BCD_LEN+1];
 
+    uint8_t         msisdn[OGS_MAX_MSISDN_LEN];
+    int             msisdn_len;
+    char            msisdn_bcd[OGS_MAX_MSISDN_BCD_LEN+1];
+
     /* User-Location-Info */
     bool            uli_presence;
     ogs_eps_tai_t   e_tai;
     ogs_e_cgi_t     e_cgi;
+
+    /* Charging info captured from Create Session Request */
+    uint8_t         rat_type;
+    ogs_plmn_id_t   serving_plmn_id;
+    bool            serving_plmn_id_presence;
 
     ogs_list_t      sess_list;
 
@@ -105,6 +118,11 @@ typedef struct sgwc_sess_s {
     ogs_pfcp_node_t *pfcp_node;
 
     ogs_pool_id_t   sgwc_ue_id;
+
+    /* Gz offline charging */
+    ogs_time_t      record_opening_time;
+    uint32_t        pgw_charging_id;        /* PDN connection charging ID */
+    uint32_t        local_sequence_number;
 } sgwc_sess_t;
 
 typedef struct sgwc_bearer_s {
@@ -113,6 +131,7 @@ typedef struct sgwc_bearer_s {
     ogs_lnode_t     to_modify_node;
 
     uint8_t         ebi;
+    uint32_t        charging_id;    /* bearer charging ID from PGW */
 
     ogs_list_t      tunnel_list;
     ogs_pool_id_t   sess_id;
