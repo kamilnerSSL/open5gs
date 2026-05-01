@@ -18,11 +18,12 @@
 libsgwc_sources = files('''
     event.h
     timer.h
-    context.h 
+    context.h
+    cdr.h
     gtp-path.h
     s11-build.h
     s11-handler.h
-    s5c-handler.h 
+    s5c-handler.h
     sxa-build.h
     sxa-handler.h
     pfcp-path.h
@@ -31,11 +32,12 @@ libsgwc_sources = files('''
     init.c
     event.c
     timer.c
-    context.c 
+    context.c
+    cdr.c
     gtp-path.c
     s11-build.c
     s11-handler.c
-    s5c-handler.c 
+    s5c-handler.c
     sxa-build.c
     sxa-handler.c
     pfcp-path.c

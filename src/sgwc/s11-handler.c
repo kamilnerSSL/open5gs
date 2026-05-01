@@ -21,6 +21,7 @@
 #include "pfcp-path.h"
 
 #include "s11-handler.h"
+#include "cdr.h"
 
 static void gtp_sess_timeout(ogs_gtp_xact_t *xact, void *data)
 {
@@ -252,6 +253,7 @@ void sgwc_s11_handle_create_session_request(
     if (sess) {
         ogs_info("OLD Session Release [IMSI:%s,APN:%s]",
                 sgwc_ue->imsi_bcd, sess->session.name);
+        sgwc_cdr_close(sess, SGWC_CDR_CLOSE_MGMT_INTERVENTION);
         sgwc_sess_remove(sess);
     }
     sess = sgwc_sess_add(sgwc_ue, apn);
@@ -278,6 +280,22 @@ void sgwc_s11_handle_create_session_request(
                     sgwc_ue->e_cgi.cell_id);
         } else
             ogs_error("Invalid User Location Info(ULI)");
+    }
+
+    /* Charging: MSISDN, RAT type, serving network */
+    if (req->msisdn.presence && req->msisdn.data) {
+        sgwc_ue->msisdn_len = ogs_min(req->msisdn.len, OGS_MAX_MSISDN_LEN);
+        memcpy(sgwc_ue->msisdn, req->msisdn.data, sgwc_ue->msisdn_len);
+        ogs_buffer_to_bcd(sgwc_ue->msisdn, sgwc_ue->msisdn_len,
+                          sgwc_ue->msisdn_bcd);
+    }
+    if (req->rat_type.presence)
+        sgwc_ue->rat_type = req->rat_type.u8;
+    if (req->serving_network.presence && req->serving_network.data &&
+        req->serving_network.len == OGS_PLMN_ID_LEN) {
+        ogs_nas_to_plmn_id(&sgwc_ue->serving_plmn_id,
+                (ogs_nas_plmn_id_t *)req->serving_network.data);
+        sgwc_ue->serving_plmn_id_presence = true;
     }
 
     /* Select SGW-U based on UE Location Information */
@@ -641,6 +659,14 @@ void sgwc_s11_handle_modify_bearer_request(
                     sgwc_ue->e_cgi.cell_id);
         } else
             ogs_error("Invalid User Location Info(ULI)");
+    }
+    if (req->rat_type.presence)
+        sgwc_ue->rat_type = req->rat_type.u8;
+    if (req->serving_network.presence && req->serving_network.data &&
+        req->serving_network.len == OGS_PLMN_ID_LEN) {
+        ogs_nas_to_plmn_id(&sgwc_ue->serving_plmn_id,
+                (ogs_nas_plmn_id_t *)req->serving_network.data);
+        sgwc_ue->serving_plmn_id_presence = true;
     }
 
     ogs_info("    MME_S11_TEID[%d] SGW_S11_TEID[%d]",

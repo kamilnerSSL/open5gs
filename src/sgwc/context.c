@@ -20,6 +20,7 @@
 #include <yaml.h>
 
 #include "context.h"
+#include "cdr.h"
 
 static sgwc_context_t self;
 
@@ -97,6 +98,11 @@ void sgwc_context_final(void)
     ogs_gtp_node_remove_all(&self.mme_s11_list);
     ogs_gtp_node_remove_all(&self.pgw_s5c_list);
 
+    if (self.cdr_file) {
+        ogs_free(self.cdr_file);
+        self.cdr_file = NULL;
+    }
+
     context_initialized = 0;
 }
 
@@ -148,6 +154,22 @@ int sgwc_context_parse_config(void)
                     /* handle config in pfcp library */
                 } else if (!strcmp(sgwc_key, "sgwu")) {
                     /* handle config in pfcp library */
+                } else if (!strcmp(sgwc_key, "gz")) {
+                    ogs_yaml_iter_t gz_iter;
+                    ogs_yaml_iter_recurse(&sgwc_iter, &gz_iter);
+                    while (ogs_yaml_iter_next(&gz_iter)) {
+                        const char *gz_key = ogs_yaml_iter_key(&gz_iter);
+                        ogs_assert(gz_key);
+                        if (!strcmp(gz_key, "cdr_file")) {
+                            const char *v = ogs_yaml_iter_value(&gz_iter);
+                            if (v) {
+                                if (self.cdr_file)
+                                    ogs_free(self.cdr_file);
+                                self.cdr_file = ogs_strdup(v);
+                            }
+                        } else
+                            ogs_warn("unknown gz key `%s`", gz_key);
+                    }
                 } else
                     ogs_warn("unknown key `%s`", sgwc_key);
             }
@@ -477,8 +499,10 @@ void sgwc_sess_remove_all(sgwc_ue_t *sgwc_ue)
     sgwc_sess_t *sess = NULL, *next_sess = NULL;
 
     ogs_assert(sgwc_ue);
-    ogs_list_for_each_safe(&sgwc_ue->sess_list, next_sess, sess)
+    ogs_list_for_each_safe(&sgwc_ue->sess_list, next_sess, sess) {
+        sgwc_cdr_close(sess, SGWC_CDR_CLOSE_MGMT_INTERVENTION);
         sgwc_sess_remove(sess);
+    }
 }
 
 sgwc_sess_t* sgwc_sess_find_by_teid(uint32_t teid)

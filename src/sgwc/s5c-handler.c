@@ -320,6 +320,10 @@ void sgwc_s5c_handle_create_session_response(
             return;
         }
 
+        if (rsp->bearer_contexts_created[i].charging_id.presence)
+            bearer->charging_id =
+                rsp->bearer_contexts_created[i].charging_id.u32;
+
         ul_tunnel = sgwc_ul_tunnel_in_bearer(bearer);
         ogs_assert(ul_tunnel);
 
@@ -358,6 +362,10 @@ void sgwc_s5c_handle_create_session_response(
                 &far->outer_header_creation, &far->outer_header_creation_len));
         far->outer_header_creation.teid = ul_tunnel->remote_teid;
     }
+
+    /* PDN connection charging ID (applies to all bearers in this session) */
+    if (rsp->pdn_connection_charging_id.presence)
+        sess->pgw_charging_id = rsp->pdn_connection_charging_id.u32;
 
     /* Receive Control Plane(UL) : PGW-S5C */
     pgw_s5c_teid = rsp->pgw_s5_s8__s2a_s2b_f_teid_for_pmip_based_interface_or_for_gtp_based_control_plane_interface.data;

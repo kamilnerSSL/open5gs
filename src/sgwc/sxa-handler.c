@@ -20,6 +20,7 @@
 #include "pfcp-path.h"
 #include "gtp-path.h"
 #include "sxa-handler.h"
+#include "cdr.h"
 
 static uint8_t gtp_cause_from_pfcp(uint8_t pfcp_cause)
 {
@@ -1142,6 +1143,10 @@ void sgwc_sxa_handle_session_modification_response(
             rv = ogs_gtp_xact_commit(s11_xact);
             ogs_expect(rv == OGS_OK);
 
+            /* Open Gz CDR once session is fully established */
+            ogs_assert(sess);
+            sgwc_cdr_open(sess);
+
         } else if (flags & OGS_PFCP_MODIFY_DL_ONLY) {
             if (SGWC_SESSION_SYNC_DONE(sgwc_ue,
                     OGS_PFCP_SESSION_MODIFICATION_REQUEST_TYPE, flags)) {
@@ -1611,9 +1616,10 @@ void sgwc_sxa_handle_session_deletion_response(
     }
 
 cleanup:
-    if (sess)
+    if (sess) {
+        sgwc_cdr_close(sess, SGWC_CDR_CLOSE_NORMAL_RELEASE);
         sgwc_sess_remove(sess);
-    else
+    } else
         ogs_error("No Session");
 }
 
