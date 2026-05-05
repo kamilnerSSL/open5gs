@@ -58,6 +58,11 @@ uint32_t smf_gx_handle_cca_initial_request(
     /* Store whether PCRF requires online charging for this session */
     sess->gy_enabled = (gx_message->online == OGS_DIAM_GX_ENABLE_ONLINE);
 
+    /* If ctf=yes, force online charging regardless of PCRF Online AVP */
+    if (!sess->gy_enabled &&
+        smf_self()->ctf_config.enabled == SMF_CTF_ENABLED_YES)
+        sess->gy_enabled = true;
+
     sess->policy.num_of_pcc_rule = gx_message->session_data.num_of_pcc_rule;
     for (i = 0; i < gx_message->session_data.num_of_pcc_rule; i++)
         OGS_STORE_PCC_RULE(&sess->policy.pcc_rule[i],
