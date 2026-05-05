@@ -587,7 +587,7 @@ fi
 %{_unitdir}/open5gs-upfd.service
 
 %changelog
-* Thu May 01 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-18
+* Fri May 01 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-18
 - sgwc: add Gz offline charging CDR output (Phase 1); each completed
   session produces one JSON record (a single line) appended to a
   configurable file (default /var/log/open5gs/sgwc-cdrs.jsonl).
@@ -597,7 +597,7 @@ fi
   duration, cause, and optional ULI (TAI + ECGI). Configure via
   sgwc.gz.cdr_file in sgwc.yaml. Architecture preserves a clean
   data-capture layer for a future GTP'/ASN.1 BER transport phase.
-* Wed Apr 30 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-17
+* Thu Apr 30 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-17
 - smf: add absolute session timeout; new session_timeout key (seconds)
   under smf: in smf.yaml terminates sessions that remain active longer
   than the configured lifetime. Per-session ogs_timer_t fires
@@ -605,7 +605,7 @@ fi
   trigger; 5GC sessions follow the normal network-requested PDU Session
   Release path (N1/N2 command to UE); EPC sessions delete the PFCP
   session then run Gx/Gy/S6b CCR-Termination. Disabled when unset or 0.
-* Wed Apr 02 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-16
+* Thu Apr 02 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-16
 - smf: detect UPF restart via Recovery Timestamp in Association Setup
   Request/Response handlers; triggers pfcp_restoration() when remote
   timestamp increases, mirroring the existing heartbeat handler logic.
