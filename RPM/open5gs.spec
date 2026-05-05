@@ -3,7 +3,7 @@
 
 # basesuffix identifies your packaging (always appended to Release).
 %global basesuffix .sslconsult
-%global releaseNum 18
+%global releaseNum 19
 
 Name:           open5gs
 Version:        2.7.7
@@ -587,6 +587,10 @@ fi
 %{_unitdir}/open5gs-upfd.service
 
 %changelog
+* Tue May 05 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-19
+- smf: force gy_enabled when ctf=yes regardless of PCRF Online AVP;
+  open5gs PCRF never sets Online: 1 in CCA so Gy CCR was never sent
+  even with smf.ctf.enabled: yes configured.
 * Fri May 01 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-18
 - sgwc: add Gz offline charging CDR output (Phase 1); each completed
   session produces one JSON record (a single line) appended to a
