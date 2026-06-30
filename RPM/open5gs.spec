@@ -3,7 +3,7 @@
 
 # basesuffix identifies your packaging (always appended to Release).
 %global basesuffix .sslconsult
-%global releaseNum 19
+%global releaseNum 20
 
 Name:           open5gs
 Version:        2.7.7
@@ -587,6 +587,12 @@ fi
 %{_unitdir}/open5gs-upfd.service
 
 %changelog
+* Tue Jun 30 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-20
+- smf: fix build break in gsm-sm.c gtp_cause_from_diameter(); a duplicated
+  OGS_DIAM_UNABLE_TO_DELIVER case had been left outside the inner
+  switch(dia_err), landing as a label on switch(gtp_version) (uint8_t) and
+  failing the build with -Werror=switch-outside-range and
+  -Werror=implicit-fallthrough. Release 19 did not compile.
 * Tue May 05 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-19
 - smf: force gy_enabled when ctf=yes regardless of PCRF Online AVP;
   open5gs PCRF never sets Online: 1 in CCA so Gy CCR was never sent
