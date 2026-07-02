@@ -106,7 +106,7 @@ int gsm_handle_pdu_session_establishment_request(
         }
     }
 
-    r = smf_sbi_discover_and_send(OGS_SBI_SERVICE_TYPE_NUDM_SDM, NULL,
+    r = smf_sbi_discover_and_send(OpenAPI_service_name_nudm_sdm, NULL,
             smf_nudm_sdm_build_get,
             sess, stream, 0, (char *)OGS_SBI_RESOURCE_NAME_SM_DATA);
     ogs_expect(r == OGS_OK);
@@ -286,8 +286,12 @@ int gsm_handle_pdu_session_modification_qos_rules(
                 pf = smf_pf_add(qos_flow);
                 ogs_assert(pf);
 
-                ogs_assert(
-                    reconfigure_packet_filter(pf, &qos_rule[i], i) > 0);
+                if (reconfigure_packet_filter(pf, &qos_rule[i], j) <= 0) {
+                    ogs_error("[%s:%d] Invalid packet filter",
+                            smf_ue->supi, sess->psi);
+                    smf_pf_remove(pf);
+                    return OGS_ERROR;
+                }
 /*
  * Refer to lib/ipfw/ogs-ipfw.h
  * Issue #338
@@ -417,6 +421,7 @@ int gsm_handle_pdu_session_modification_qos_flow_descriptions(
     }
 
     for (i = 0; i < num_of_description; i++) {
+
         smf_bearer_t *qos_flow =
             smf_qos_flow_find_by_qfi(
                     sess, qos_flow_description[i].identifier);
@@ -447,9 +452,9 @@ int gsm_handle_pdu_session_modification_qos_flow_descriptions(
                         &qos_flow_description[i].param[j].br);
                 break;
             default:
-                ogs_fatal("Unknown qos_flow parameter identifier [%d]",
-                        qos_flow_description[i].param[i].identifier);
-                ogs_assert_if_reached();
+                ogs_error("Unknown qos_flow parameter identifier [%d]",
+                        qos_flow_description[i].param[j].identifier);
+                return OGS_ERROR;
             }
         }
 

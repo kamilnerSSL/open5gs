@@ -150,9 +150,9 @@ char *ogs_supi_from_suci(char *suci)
 
                     if (ogs_sbi_self()->hnet[home_network_pki_value].scheme
                             != protection_scheme_id) {
-                        ogs_error("Scheme Not Matched [%d != %s]",
-                            ogs_sbi_self()->hnet[protection_scheme_id].scheme,
-                            array[5]);
+                        ogs_error("Scheme Not Matched [%d != %d]",
+                            ogs_sbi_self()->hnet[home_network_pki_value].scheme,
+                            protection_scheme_id);
                         break;
                     }
 
@@ -882,9 +882,17 @@ bool ogs_sbi_time_from_string(ogs_time_t *timestamp, char *str)
                     (str[i-3] == '+' || str[i-3] == '-')) {
                 /* remove ':' character in timezone string range */
             } else {
+                if (j >= MAX_TIMESTR_LEN - 1) {
+                    ogs_error("Too long time string [%d]", (int)strlen(str));
+                    return false;
+                }
                 seconds[j++] = str[i];
             }
         } else {
+            if (k >= MAX_TIMESTR_LEN - 1) {
+                ogs_error("Too long time string [%d]", (int)strlen(str));
+                return false;
+            }
             subsecs[k++] = str[i];
         }
 
@@ -1185,6 +1193,12 @@ int ogs_sbi_parse_plmn_list(
         if (PlmnId) {
             ogs_assert(PlmnId->mcc);
             ogs_assert(PlmnId->mnc);
+
+            if (num_of_plmn_list >= OGS_MAX_NUM_OF_PLMN) {
+                ogs_warn("Exceeded maximum PLMN list size (%d)",
+                        OGS_MAX_NUM_OF_PLMN);
+                break;
+            }
 
             ogs_plmn_id_build(plmn_list + num_of_plmn_list,
                     atoi(PlmnId->mcc), atoi(PlmnId->mnc), strlen(PlmnId->mnc));

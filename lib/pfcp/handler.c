@@ -93,32 +93,12 @@ bool ogs_pfcp_cp_handle_association_setup_request(
         ogs_pfcp_node_t *node, ogs_pfcp_xact_t *xact,
         ogs_pfcp_association_setup_request_t *req)
 {
-    int i;
-    int16_t decoded;
-
     ogs_assert(xact);
     ogs_assert(node);
     ogs_assert(req);
 
     ogs_pfcp_cp_send_association_setup_response(
             xact, OGS_PFCP_CAUSE_REQUEST_ACCEPTED);
-
-    ogs_gtpu_resource_remove_all(&node->gtpu_resource_list);
-
-    for (i = 0; i < OGS_MAX_NUM_OF_GTPU_RESOURCE; i++) {
-        ogs_pfcp_tlv_user_plane_ip_resource_information_t *message =
-            &req->user_plane_ip_resource_information[i];
-        ogs_user_plane_ip_resource_info_t info;
-
-        if (message->presence == 0)
-            break;
-
-        decoded = ogs_pfcp_parse_user_plane_ip_resource_info(&info, message);
-        if (message->len == decoded)
-            ogs_gtpu_resource_add(&node->gtpu_resource_list, &info);
-        else
-            ogs_error("Invalid User Plane IP Resource Info");
-    }
 
     if (req->up_function_features.presence) {
         if (req->up_function_features.data && req->up_function_features.len) {
@@ -156,31 +136,11 @@ bool ogs_pfcp_cp_handle_association_setup_response(
         ogs_pfcp_node_t *node, ogs_pfcp_xact_t *xact,
         ogs_pfcp_association_setup_response_t *rsp)
 {
-    int i;
-    int16_t decoded;
-
     ogs_assert(xact);
     ogs_pfcp_xact_commit(xact);
 
     ogs_assert(node);
     ogs_assert(rsp);
-
-    ogs_gtpu_resource_remove_all(&node->gtpu_resource_list);
-
-    for (i = 0; i < OGS_MAX_NUM_OF_GTPU_RESOURCE; i++) {
-        ogs_pfcp_tlv_user_plane_ip_resource_information_t *message =
-            &rsp->user_plane_ip_resource_information[i];
-        ogs_user_plane_ip_resource_info_t info;
-
-        if (message->presence == 0)
-            break;
-
-        decoded = ogs_pfcp_parse_user_plane_ip_resource_info(&info, message);
-        if (message->len == decoded)
-            ogs_gtpu_resource_add(&node->gtpu_resource_list, &info);
-        else
-            ogs_error("Invalid User Plane IP Resource Info");
-    }
 
     if (rsp->up_function_features.presence) {
         if (rsp->up_function_features.data && rsp->up_function_features.len) {
@@ -574,7 +534,8 @@ ogs_pfcp_pdr_t *ogs_pfcp_handle_create_pdr(ogs_pfcp_sess_t *sess,
 
     ogs_pfcp_rule_remove_all(pdr);
 
-    for (i = 0; i < OGS_MAX_NUM_OF_FLOW_IN_PDR; i++) {
+    for (i = 0; i < ogs_min(OGS_ARRAY_SIZE(message->pdi.sdf_filter),
+                OGS_MAX_NUM_OF_FLOW_IN_PDR); i++) {
         ogs_pfcp_sdf_filter_t sdf_filter;
         ogs_pfcp_rule_t *rule = NULL;
         ogs_pfcp_rule_t *oppsite_direction_rule = NULL;
@@ -963,7 +924,8 @@ ogs_pfcp_pdr_t *ogs_pfcp_handle_update_pdr(ogs_pfcp_sess_t *sess,
 
         ogs_pfcp_rule_remove_all(pdr);
 
-        for (i = 0; i < OGS_MAX_NUM_OF_FLOW_IN_PDR; i++) {
+        for (i = 0; i < ogs_min(OGS_ARRAY_SIZE(message->pdi.sdf_filter),
+                    OGS_MAX_NUM_OF_FLOW_IN_PDR); i++) {
             ogs_pfcp_sdf_filter_t sdf_filter;
             ogs_pfcp_rule_t *rule = NULL;
             ogs_pfcp_rule_t *oppsite_direction_rule = NULL;
@@ -1219,8 +1181,15 @@ ogs_pfcp_far_t *ogs_pfcp_handle_create_far(ogs_pfcp_sess_t *sess,
             ogs_pfcp_tlv_outer_header_creation_t *outer_header_creation =
                 &message->forwarding_parameters.outer_header_creation;
 
-            ogs_assert(outer_header_creation->data);
-            ogs_assert(outer_header_creation->len);
+            if (!outer_header_creation->data ||
+                    outer_header_creation->len == 0) {
+                ogs_error("Invalid Outer Header Creation [data:%p,len:%d]",
+                        outer_header_creation->data,
+                        outer_header_creation->len);
+                *cause_value = OGS_PFCP_CAUSE_INVALID_LENGTH;
+                *offending_ie_value = OGS_PFCP_OUTER_HEADER_CREATION_TYPE;
+                return NULL;
+            }
 
             memcpy(&far->outer_header_creation, outer_header_creation->data,
                     ogs_min(sizeof(far->outer_header_creation),
@@ -1337,8 +1306,15 @@ ogs_pfcp_far_t *ogs_pfcp_handle_update_far(ogs_pfcp_sess_t *sess,
             ogs_pfcp_tlv_outer_header_creation_t *outer_header_creation =
                 &message->update_forwarding_parameters.outer_header_creation;
 
-            ogs_assert(outer_header_creation->data);
-            ogs_assert(outer_header_creation->len);
+            if (!outer_header_creation->data ||
+                    outer_header_creation->len == 0) {
+                ogs_error("Invalid Outer Header Creation [data:%p,len:%d]",
+                        outer_header_creation->data,
+                        outer_header_creation->len);
+                *cause_value = OGS_PFCP_CAUSE_INVALID_LENGTH;
+                *offending_ie_value = OGS_PFCP_OUTER_HEADER_CREATION_TYPE;
+                return NULL;
+            }
 
             memcpy(&far->outer_header_creation, outer_header_creation->data,
                     ogs_min(sizeof(far->outer_header_creation),

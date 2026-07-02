@@ -199,7 +199,7 @@ void sgwc_s5c_handle_create_session_response(
     ogs_assert(cause_value == OGS_GTP2_CAUSE_REQUEST_ACCEPTED);
     ogs_assert(session_cause == OGS_GTP2_CAUSE_REQUEST_ACCEPTED);
 
-    if (rsp->pgw_s5_s8__s2a_s2b_f_teid_for_pmip_based_interface_or_for_gtp_based_control_plane_interface.presence == 0) {
+    if (rsp->pgw_s5_s8_s2a_s2b_f_teid_for_pmip_based_interface_or_for_gtp_based_control_plane_interface.presence == 0) {
         ogs_error("No GTP TEID [Cause:%d]", session_cause);
         cause_value = OGS_GTP2_CAUSE_CONDITIONAL_IE_MISSING;
     }
@@ -368,7 +368,7 @@ void sgwc_s5c_handle_create_session_response(
         sess->pgw_charging_id = rsp->pdn_connection_charging_id.u32;
 
     /* Receive Control Plane(UL) : PGW-S5C */
-    pgw_s5c_teid = rsp->pgw_s5_s8__s2a_s2b_f_teid_for_pmip_based_interface_or_for_gtp_based_control_plane_interface.data;
+    pgw_s5c_teid = rsp->pgw_s5_s8_s2a_s2b_f_teid_for_pmip_based_interface_or_for_gtp_based_control_plane_interface.data;
     ogs_assert(pgw_s5c_teid);
     sess->pgw_s5c_teid = be32toh(pgw_s5c_teid->teid);
 

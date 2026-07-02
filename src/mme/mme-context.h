@@ -163,7 +163,7 @@ typedef struct mme_context_s {
     struct {
         struct {
             ogs_time_t value;       /* Timer Value(Seconds) */
-        } t3402, t3412, t3423;
+        } t3402, t3396, t3412, t3423;
     } time;
 
     struct {
@@ -254,6 +254,11 @@ typedef struct mme_enb_s {
 
     bool            enb_id_presence;
     uint32_t        enb_id;     /* eNB_ID received from eNB */
+    /* Optional human-readable eNB name from the S1SetupRequest eNBname
+     * IE (S1AP id_eNBname).  Empty string when the eNB doesn't include
+     * the IE.  Capped at 64 octets; the spec PrintableString upper
+     * bound is 150 but real-world names are short. */
+    char            enb_name[64];
     ogs_plmn_id_t   plmn_id;    /* eNB PLMN-ID received from eNB */
     ogs_sctp_sock_t sctp;       /* SCTP socket */
 
@@ -523,6 +528,15 @@ struct mme_ue_s {
     uint16_t        enb_ostream_id;
     ogs_eps_tai_t   tai;
     ogs_e_cgi_t     e_cgi;
+    /* Last-known eNB-ID, captured in enb_ue_associate_mme_ue() and
+     * preserved across UE Context Release.  Mirrors how amf_ue_t->nr_cgi
+     * survives the freeing of ran_ue_t at NG UE Context Release: the
+     * S1 enb_ue_t is freed when the UE goes ECM-IDLE, but external
+     * monitors querying /mme/ue-info still want to know which cell a
+     * UE was last attached to.  presence flag tracks whether we've
+     * ever seen this UE on an eNB whose own enb_id_presence was true. */
+    bool            last_enb_id_presence;
+    uint32_t        last_enb_id;
     ogs_time_t      ue_location_timestamp;
     ogs_plmn_id_t   last_visited_plmn_id;
 
@@ -564,6 +578,10 @@ struct mme_ue_s {
 
     /* Security Context */
     ogs_nas_ue_network_capability_t ue_network_capability;
+
+    /* Transient Path Switch state */
+    bool send_ue_security_capability_in_path_switch_ack;
+
     ogs_nas_ms_network_capability_t ms_network_capability;
     ogs_nas_ue_additional_security_capability_t
         ue_additional_security_capability;
@@ -663,6 +681,24 @@ struct mme_ue_s {
     do { \
         enb_ue_t *enb_ue_holding = NULL; \
         \
+        enb_ue_holding = enb_ue_find_by_id((__mME)->enb_ue_holding_id); \
+        if (enb_ue_holding) { \
+            int r; \
+            ogs_warn("[%s] Holding S1 context already exists", \
+                    (__mME)->imsi_bcd); \
+            ogs_warn("[%s]    ENB_UE_S1AP_ID[%d] MME_UE_S1AP_ID[%d]", \
+                    (__mME)->imsi_bcd, \
+                    enb_ue_holding->enb_ue_s1ap_id, \
+                    enb_ue_holding->mme_ue_s1ap_id); \
+            r = s1ap_send_ue_context_release_command( \
+                    enb_ue_holding, \
+                    S1AP_Cause_PR_nas, S1AP_CauseNas_normal_release, \
+                    S1AP_UE_CTX_REL_S1_CONTEXT_REMOVE, 0); \
+            ogs_expect(r == OGS_OK); \
+        } else if ((__mME)->enb_ue_holding_id != OGS_INVALID_POOL_ID) { \
+            ogs_warn("[%s] Holding S1 context has already been removed", \
+                    (__mME)->imsi_bcd); \
+        } \
         (__mME)->enb_ue_holding_id = OGS_INVALID_POOL_ID; \
         \
         enb_ue_holding = enb_ue_find_by_id((__mME)->enb_ue_id); \
@@ -716,6 +752,7 @@ struct mme_ue_s {
         ogs_debug("[%s] Clear Paging Info", (__mME)->imsi_bcd); \
         (__mME)->paging.type = 0; \
         (__mME)->paging.failed = false; \
+        (__mME)->paging.esm_cause = OGS_NAS_ESM_CAUSE_REGULAR_DEACTIVATION; \
     } while(0)
 
 #define MME_STORE_PAGING_INFO(__mME, __tYPE, __dATA) \
@@ -739,6 +776,8 @@ struct mme_ue_s {
         int type;
         void *data;
         bool failed;
+        uint8_t esm_cause; /* NAS ESM cause carried across paging to the
+                            * deferred (post-paging) deactivation/detach */
     } paging;
 
     /* SGW UE context */
