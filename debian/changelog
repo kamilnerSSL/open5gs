@@ -1,3 +1,87 @@
+open5gs (2.8.0) unstable; urgency=medium
+
+  * Upgrade to Release-19
+
+ -- Sukchan Lee <acetcom@gmail.com>  Sat, 20 Jun 2026 13:08:54 +0900
+
+open5gs (2.8.0~bionic6) bionic; urgency=medium
+
+  * Upgrade to Release-19
+
+ -- Sukchan Lee <acetcom@gmail.com>  Sat, 20 Jun 2026 13:05:43 +0900
+
+open5gs (2.8.0~resolute6) resolute; urgency=medium
+
+  * Upgrade to Release-19
+
+ -- Sukchan Lee <acetcom@gmail.com>  Sat, 20 Jun 2026 12:56:54 +0900
+
+open5gs (2.8.0~questing5) questing; urgency=medium
+
+  * Upgrade to Release-19
+
+ -- Sukchan Lee <acetcom@gmail.com>  Sat, 20 Jun 2026 12:54:09 +0900
+
+open5gs (2.8.0~noble5) noble; urgency=medium
+
+  * Upgrade to Release-19
+
+ -- Sukchan Lee <acetcom@gmail.com>  Sat, 20 Jun 2026 12:51:03 +0900
+
+open5gs (2.8.0~jammy5) jammy; urgency=medium
+
+  * Upgrade to Release-19
+
+ -- Sukchan Lee <acetcom@gmail.com>  Sat, 20 Jun 2026 12:48:15 +0900
+
+open5gs (2.8.0~focal5) focal; urgency=medium
+
+  * Upgrade to Release-19
+
+ -- Sukchan Lee <acetcom@gmail.com>  Sat, 20 Jun 2026 12:45:38 +0900
+
+open5gs (2.7.7) unstable; urgency=medium
+
+  * Bug Fixed
+
+ -- Sukchan Lee <acetcom@gmail.com>  Sun, 15 Mar 2026 20:35:27 +0900
+
+open5gs (2.7.7~questing) questing; urgency=medium
+
+  * Bug Fixed
+
+ -- Sukchan Lee <acetcom@gmail.com>  Sun, 15 Mar 2026 20:32:45 +0900
+
+open5gs (2.7.7~plucky) plucky; urgency=medium
+
+  * Bug Fixed
+
+ -- Sukchan Lee <acetcom@gmail.com>  Sun, 15 Mar 2026 20:29:35 +0900
+
+open5gs (2.7.7~noble) noble; urgency=medium
+
+  * Bug Fixed
+
+ -- Sukchan Lee <acetcom@gmail.com>  Sun, 15 Mar 2026 20:27:45 +0900
+
+open5gs (2.7.7~jammy) jammy; urgency=medium
+
+  * Bug Fixed
+
+ -- Sukchan Lee <acetcom@gmail.com>  Sun, 15 Mar 2026 20:26:00 +0900
+
+open5gs (2.7.7~focal) focal; urgency=medium
+
+  * Bug Fixed
+
+ -- Sukchan Lee <acetcom@gmail.com>  Sun, 15 Mar 2026 20:23:53 +0900
+
+open5gs (2.7.7~bionic) bionic; urgency=medium
+
+  * Bug Fixed
+
+ -- Sukchan Lee <acetcom@gmail.com>  Sun, 15 Mar 2026 20:21:59 +0900
+
 open5gs (2.7.6) unstable; urgency=medium
 
   * Bug Fixed

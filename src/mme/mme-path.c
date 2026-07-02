@@ -280,7 +280,15 @@ void mme_send_after_paging(mme_ue_t *mme_ue, bool failed)
                 mme_gtp_send_delete_bearer_response(
                     bearer, OGS_GTP2_CAUSE_UNABLE_TO_PAGE_UE));
         } else {
-            r = nas_eps_send_deactivate_bearer_context_request(bearer);
+            /*
+             * Use the NAS ESM cause carried across paging (stored when the
+             * Delete Bearer Request was received). This preserves
+             * "reactivation requested" for an ECM-IDLE UE so the (IMS) PDN
+             * connection is re-established after paging. See
+             * mme_s11_handle_delete_bearer_request().
+             */
+            r = nas_eps_send_deactivate_bearer_context_request(
+                    bearer, mme_ue->paging.esm_cause);
             ogs_expect(r == OGS_OK);
             ogs_assert(r != OGS_ERROR);
         }
@@ -415,6 +423,22 @@ void mme_send_tau_accept_and_check_release(enb_ue_t *enb_ue, mme_ue_t *mme_ue)
 
     ogs_assert(mme_ue);
     ogs_assert(enb_ue);
+
+    /*
+     * If BCS mismatch deleted all sessions, InitialContextSetup is impossible
+     * (requires E-RABs). Fall back to DownlinkNASTransport to deliver TAU
+     * Accept without bearer setup. The UE reported no bearers via BCS,
+     * so it can re-establish PDN connectivity after TAU completes.
+     */
+    if (mme_ue->tracking_area_update_accept_proc ==
+            S1AP_ProcedureCode_id_InitialContextSetup &&
+            ogs_list_count(&mme_ue->sess_list) == 0) {
+        ogs_warn("[%s] No sessions after BCS cleanup; "
+                "downgrade InitialContextSetup to DownlinkNASTransport",
+                mme_ue->imsi_bcd);
+        mme_ue->tracking_area_update_accept_proc =
+            S1AP_ProcedureCode_id_downlinkNASTransport;
+    }
 
     r = nas_eps_send_tau_accept(mme_ue,
             mme_ue->tracking_area_update_accept_proc);

@@ -93,32 +93,12 @@ bool ogs_pfcp_cp_handle_association_setup_request(
         ogs_pfcp_node_t *node, ogs_pfcp_xact_t *xact,
         ogs_pfcp_association_setup_request_t *req)
 {
-    int i;
-    int16_t decoded;
-
     ogs_assert(xact);
     ogs_assert(node);
     ogs_assert(req);
 
     ogs_pfcp_cp_send_association_setup_response(
             xact, OGS_PFCP_CAUSE_REQUEST_ACCEPTED);
-
-    ogs_gtpu_resource_remove_all(&node->gtpu_resource_list);
-
-    for (i = 0; i < OGS_MAX_NUM_OF_GTPU_RESOURCE; i++) {
-        ogs_pfcp_tlv_user_plane_ip_resource_information_t *message =
-            &req->user_plane_ip_resource_information[i];
-        ogs_user_plane_ip_resource_info_t info;
-
-        if (message->presence == 0)
-            break;
-
-        decoded = ogs_pfcp_parse_user_plane_ip_resource_info(&info, message);
-        if (message->len == decoded)
-            ogs_gtpu_resource_add(&node->gtpu_resource_list, &info);
-        else
-            ogs_error("Invalid User Plane IP Resource Info");
-    }
 
     if (req->up_function_features.presence) {
         if (req->up_function_features.data && req->up_function_features.len) {
@@ -141,31 +121,11 @@ bool ogs_pfcp_cp_handle_association_setup_response(
         ogs_pfcp_node_t *node, ogs_pfcp_xact_t *xact,
         ogs_pfcp_association_setup_response_t *rsp)
 {
-    int i;
-    int16_t decoded;
-
     ogs_assert(xact);
     ogs_pfcp_xact_commit(xact);
 
     ogs_assert(node);
     ogs_assert(rsp);
-
-    ogs_gtpu_resource_remove_all(&node->gtpu_resource_list);
-
-    for (i = 0; i < OGS_MAX_NUM_OF_GTPU_RESOURCE; i++) {
-        ogs_pfcp_tlv_user_plane_ip_resource_information_t *message =
-            &rsp->user_plane_ip_resource_information[i];
-        ogs_user_plane_ip_resource_info_t info;
-
-        if (message->presence == 0)
-            break;
-
-        decoded = ogs_pfcp_parse_user_plane_ip_resource_info(&info, message);
-        if (message->len == decoded)
-            ogs_gtpu_resource_add(&node->gtpu_resource_list, &info);
-        else
-            ogs_error("Invalid User Plane IP Resource Info");
-    }
 
     if (rsp->up_function_features.presence) {
         if (rsp->up_function_features.data && rsp->up_function_features.len) {
@@ -544,7 +504,8 @@ ogs_pfcp_pdr_t *ogs_pfcp_handle_create_pdr(ogs_pfcp_sess_t *sess,
 
     ogs_pfcp_rule_remove_all(pdr);
 
-    for (i = 0; i < OGS_MAX_NUM_OF_FLOW_IN_PDR; i++) {
+    for (i = 0; i < ogs_min(OGS_ARRAY_SIZE(message->pdi.sdf_filter),
+                OGS_MAX_NUM_OF_FLOW_IN_PDR); i++) {
         ogs_pfcp_sdf_filter_t sdf_filter;
         ogs_pfcp_rule_t *rule = NULL;
         ogs_pfcp_rule_t *oppsite_direction_rule = NULL;
@@ -933,7 +894,8 @@ ogs_pfcp_pdr_t *ogs_pfcp_handle_update_pdr(ogs_pfcp_sess_t *sess,
 
         ogs_pfcp_rule_remove_all(pdr);
 
-        for (i = 0; i < OGS_MAX_NUM_OF_FLOW_IN_PDR; i++) {
+        for (i = 0; i < ogs_min(OGS_ARRAY_SIZE(message->pdi.sdf_filter),
+                    OGS_MAX_NUM_OF_FLOW_IN_PDR); i++) {
             ogs_pfcp_sdf_filter_t sdf_filter;
             ogs_pfcp_rule_t *rule = NULL;
             ogs_pfcp_rule_t *oppsite_direction_rule = NULL;
@@ -1102,9 +1064,9 @@ bool ogs_pfcp_handle_remove_pdr(ogs_pfcp_sess_t *sess,
 
     pdr = ogs_pfcp_pdr_find(sess, message->pdr_id.u16);
     if (!pdr) {
-        ogs_error("Unknown PDR-ID[%d]", message->pdr_id.u16);
-        *cause_value = OGS_PFCP_CAUSE_SESSION_CONTEXT_NOT_FOUND;
-        return false;
+        ogs_warn("Unknown PDR-ID[%d] in Remove PDR (already removed?)",
+                message->pdr_id.u16);
+        return true;
     }
 
     ogs_pfcp_pdr_remove(pdr);
@@ -1131,10 +1093,10 @@ ogs_pfcp_far_t *ogs_pfcp_handle_create_far(ogs_pfcp_sess_t *sess,
         return NULL;
     }
 
-    far = ogs_pfcp_far_find(sess, message->far_id.u32);
+    far = ogs_pfcp_far_find_or_add(sess, message->far_id.u32);
     if (!far) {
-        ogs_error("Cannot find FAR-ID[%d] in PDR", message->far_id.u32);
-        *cause_value = OGS_PFCP_CAUSE_MANDATORY_IE_INCORRECT;
+        ogs_error("Cannot allocate FAR-ID[%d]", message->far_id.u32);
+        *cause_value = OGS_PFCP_CAUSE_NO_RESOURCES_AVAILABLE;
         *offending_ie_value = OGS_PFCP_FAR_ID_TYPE;
         return NULL;
     }
@@ -1149,7 +1111,9 @@ ogs_pfcp_far_t *ogs_pfcp_handle_create_far(ogs_pfcp_sess_t *sess,
     far->apply_action = message->apply_action.u16;
 
     far->dst_if = 0;
+    far->dst_if_type_presence = false;
     memset(&far->outer_header_creation, 0, sizeof(far->outer_header_creation));
+    far->outer_header_creation_len = 0;
 
     if (far->dnn) {
         ogs_free(far->dnn);
@@ -1187,8 +1151,15 @@ ogs_pfcp_far_t *ogs_pfcp_handle_create_far(ogs_pfcp_sess_t *sess,
             ogs_pfcp_tlv_outer_header_creation_t *outer_header_creation =
                 &message->forwarding_parameters.outer_header_creation;
 
-            ogs_assert(outer_header_creation->data);
-            ogs_assert(outer_header_creation->len);
+            if (!outer_header_creation->data ||
+                    outer_header_creation->len == 0) {
+                ogs_error("Invalid Outer Header Creation [data:%p,len:%d]",
+                        outer_header_creation->data,
+                        outer_header_creation->len);
+                *cause_value = OGS_PFCP_CAUSE_INVALID_LENGTH;
+                *offending_ie_value = OGS_PFCP_OUTER_HEADER_CREATION_TYPE;
+                return NULL;
+            }
 
             memcpy(&far->outer_header_creation, outer_header_creation->data,
                     ogs_min(sizeof(far->outer_header_creation),
@@ -1305,8 +1276,15 @@ ogs_pfcp_far_t *ogs_pfcp_handle_update_far(ogs_pfcp_sess_t *sess,
             ogs_pfcp_tlv_outer_header_creation_t *outer_header_creation =
                 &message->update_forwarding_parameters.outer_header_creation;
 
-            ogs_assert(outer_header_creation->data);
-            ogs_assert(outer_header_creation->len);
+            if (!outer_header_creation->data ||
+                    outer_header_creation->len == 0) {
+                ogs_error("Invalid Outer Header Creation [data:%p,len:%d]",
+                        outer_header_creation->data,
+                        outer_header_creation->len);
+                *cause_value = OGS_PFCP_CAUSE_INVALID_LENGTH;
+                *offending_ie_value = OGS_PFCP_OUTER_HEADER_CREATION_TYPE;
+                return NULL;
+            }
 
             memcpy(&far->outer_header_creation, outer_header_creation->data,
                     ogs_min(sizeof(far->outer_header_creation),
@@ -1340,9 +1318,9 @@ bool ogs_pfcp_handle_remove_far(ogs_pfcp_sess_t *sess,
 
     far = ogs_pfcp_far_find(sess, message->far_id.u32);
     if (!far) {
-        ogs_error("Unknown FAR-ID[%d]", message->far_id.u32);
-        *cause_value = OGS_PFCP_CAUSE_SESSION_CONTEXT_NOT_FOUND;
-        return false;
+        ogs_warn("Unknown FAR-ID[%d] in Remove FAR (already removed?)",
+                message->far_id.u32);
+        return true;
     }
 
     ogs_pfcp_far_remove(far);
@@ -1370,10 +1348,10 @@ ogs_pfcp_qer_t *ogs_pfcp_handle_create_qer(ogs_pfcp_sess_t *sess,
         return NULL;
     }
 
-    qer = ogs_pfcp_qer_find(sess, message->qer_id.u32);
+    qer = ogs_pfcp_qer_find_or_add(sess, message->qer_id.u32);
     if (!qer) {
-        ogs_error("Cannot find QER-ID[%d] in PDR", message->qer_id.u32);
-        *cause_value = OGS_PFCP_CAUSE_MANDATORY_IE_INCORRECT;
+        ogs_error("Cannot allocate QER-ID[%d]", message->qer_id.u32);
+        *cause_value = OGS_PFCP_CAUSE_NO_RESOURCES_AVAILABLE;
         *offending_ie_value = OGS_PFCP_QER_ID_TYPE;
         return NULL;
     }
@@ -1489,9 +1467,9 @@ bool ogs_pfcp_handle_remove_qer(ogs_pfcp_sess_t *sess,
 
     qer = ogs_pfcp_qer_find(sess, message->qer_id.u32);
     if (!qer) {
-        ogs_error("Unknown QER-ID[%d]", message->qer_id.u32);
-        *cause_value = OGS_PFCP_CAUSE_SESSION_CONTEXT_NOT_FOUND;
-        return false;
+        ogs_warn("Unknown QER-ID[%d] in Remove QER (already removed?)",
+                message->qer_id.u32);
+        return true;
     }
 
     ogs_pfcp_qer_remove(qer);
@@ -1574,10 +1552,10 @@ ogs_pfcp_urr_t *ogs_pfcp_handle_create_urr(ogs_pfcp_sess_t *sess,
         return NULL;
     }
 
-    urr = ogs_pfcp_urr_find(sess, message->urr_id.u32);
+    urr = ogs_pfcp_urr_find_or_add(sess, message->urr_id.u32);
     if (!urr) {
-        ogs_error("Cannot find URR-ID[%d] in PDR", message->urr_id.u32);
-        *cause_value = OGS_PFCP_CAUSE_MANDATORY_IE_INCORRECT;
+        ogs_error("Cannot allocate URR-ID[%d]", message->urr_id.u32);
+        *cause_value = OGS_PFCP_CAUSE_NO_RESOURCES_AVAILABLE;
         *offending_ie_value = OGS_PFCP_URR_ID_TYPE;
         return NULL;
     }
@@ -1600,6 +1578,21 @@ ogs_pfcp_urr_t *ogs_pfcp_handle_create_urr(ogs_pfcp_sess_t *sess,
     urr->rep_triggers.reptri_5 = (message->reporting_triggers.u24 >> 16) & 0xFF;
     urr->rep_triggers.reptri_6 = (message->reporting_triggers.u24 >> 8) & 0xFF;
     urr->rep_triggers.reptri_7 = message->reporting_triggers.u24 & 0xFF;
+
+    /* Clear optional/presence-driven fields to prevent stale state
+     * when find_or_add() returns an already-existing URR */
+    urr->meas_period = 0;
+    memset(&urr->vol_threshold, 0, sizeof(urr->vol_threshold));
+    memset(&urr->vol_quota, 0, sizeof(urr->vol_quota));
+    urr->event_threshold = 0;
+    urr->event_quota = 0;
+    urr->time_threshold = 0;
+    urr->time_quota = 0;
+    urr->quota_holding_time = 0;
+    memset(&urr->dropped_dl_traffic_threshold, 0,
+            sizeof(urr->dropped_dl_traffic_threshold));
+    urr->quota_validity_time = 0;
+    memset(&urr->meas_info, 0, sizeof(urr->meas_info));
 
     if (message->measurement_period.presence) {
         urr->meas_period = message->measurement_period.u32;
@@ -1811,9 +1804,9 @@ bool ogs_pfcp_handle_remove_urr(ogs_pfcp_sess_t *sess,
 
     urr = ogs_pfcp_urr_find(sess, message->urr_id.u32);
     if (!urr) {
-        ogs_error("Unknown URR-ID[%d]", message->urr_id.u32);
-        *cause_value = OGS_PFCP_CAUSE_SESSION_CONTEXT_NOT_FOUND;
-        return false;
+        ogs_warn("Unknown URR-ID[%d] in Remove URR (already removed?)",
+                message->urr_id.u32);
+        return true;
     }
 
     ogs_pfcp_urr_remove(urr);

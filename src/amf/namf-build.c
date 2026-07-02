@@ -72,6 +72,8 @@ ogs_sbi_request_t *amf_namf_comm_build_ue_context_transfer(
     char *ue_context_id = NULL;
 
     ogs_assert(amf_ue);
+    ogs_assert(amf_ue->nas.access_type);
+    ogs_assert(amf_ue->nas.registration.value);
 
     ue_context_id = amf_ue_to_context_id(amf_ue);
     ogs_assert(ue_context_id);
@@ -82,7 +84,8 @@ ogs_sbi_request_t *amf_namf_comm_build_ue_context_transfer(
 
     memset(&message, 0, sizeof(message));
     message.h.method = (char *)OGS_SBI_HTTP_METHOD_POST;
-    message.h.service.name = (char *)OGS_SBI_SERVICE_NAME_NAMF_COMM;
+    message.h.service.name =
+        OpenAPI_service_name_ToString(OpenAPI_service_name_namf_comm);
     message.h.api.version = (char *)OGS_SBI_API_V1;
     message.h.resource.component[0] = (char *)OGS_SBI_RESOURCE_NAME_UE_CONTEXTS;
     message.h.resource.component[1] = ue_context_id;
@@ -115,7 +118,8 @@ ogs_sbi_request_t *amf_namf_comm_build_registration_status_update(
 
     memset(&message, 0, sizeof(message));
     message.h.method = (char *)OGS_SBI_HTTP_METHOD_POST;
-    message.h.service.name = (char *)OGS_SBI_SERVICE_NAME_NAMF_COMM;
+    message.h.service.name =
+        OpenAPI_service_name_ToString(OpenAPI_service_name_namf_comm);
     message.h.api.version = (char *)OGS_SBI_API_V1;
     message.h.resource.component[0] =
             (char *)OGS_SBI_RESOURCE_NAME_UE_CONTEXTS;
