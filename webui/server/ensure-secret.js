@@ -8,6 +8,15 @@ module.exports = function() {
     // List of keys we want to ensure exist
     const keysToEnsure = ['SECRET_KEY', 'JWT_SECRET_KEY'];
 
+    // If every secret is already provided through the environment (e.g. a
+    // systemd EnvironmentFile in a packaged install), use them as-is and never
+    // touch the .env file -- the install directory may be read-only.
+    if (keysToEnsure.every(key => process.env[key])) {
+        keysToEnsure.forEach(key =>
+            console.log(`--- ${key} loaded from environment ---`));
+        return;
+    }
+
     let envContent = '';
     if (fs.existsSync(envPath)) {
         envContent = fs.readFileSync(envPath, 'utf8');

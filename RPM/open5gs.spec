@@ -3,7 +3,10 @@
 
 # basesuffix identifies your packaging (always appended to Release).
 %global basesuffix .sslconsult
-%global releaseNum 21
+%global releaseNum 22
+
+# Install location for the (Node.js/Next.js) Web UI application tree.
+%global webui_dir %{_datadir}/%{name}/webui
 
 Name:           open5gs
 Version:        2.7.7
@@ -38,6 +41,9 @@ BuildRequires:  pkgconfig(talloc)
 BuildRequires:  pkgconfig(libtins)
 BuildRequires:  pkgconfig(usrsctp)
 BuildRequires:  chrpath
+# Web UI (Next.js/Express) build toolchain
+BuildRequires:  nodejs
+BuildRequires:  npm
 
 # NOTE: mongodb-org-server is a runtime prerequisite, not a package dependency.
 # Users should install it manually from the official MongoDB repository.
@@ -228,6 +234,21 @@ Requires(postun): systemd
 %description upf
 This package provides the Open5GS User Plane Function (UPF).
 
+%package webui
+Summary:        Open5GS Web UI for subscriber management
+Requires:       %{name}-common = %{version}-%{release}
+Requires:       nodejs
+Requires(post):   systemd
+Requires(post):   openssl
+Requires(preun):  systemd
+Requires(postun): systemd
+
+%description webui
+Web-based subscriber management interface for Open5GS. A Node.js
+(Next.js/Express) application that connects to the Open5GS MongoDB
+subscriber database. Listens on port 9999 by default; edit
+%{_sysconfdir}/open5gs/webui.env to change the port or database URI.
+
 
 %prep
 %autosetup -p1
@@ -240,6 +261,15 @@ meson subprojects download
     --localstatedir=%{_localstatedir} \
     --libdir=%{_libdir}
 %meson_build
+
+# --- Web UI (Next.js/Express) ---
+# Requires network access to fetch npm dependencies (build.sh runs rpmbuild
+# directly, so the network is available). node_modules is gitignored and thus
+# absent from the source tarball, so it is installed here.
+pushd webui
+npm ci
+npm run build
+popd
 
 %install
 %meson_install
@@ -277,6 +307,48 @@ find %{_builddir}/%{name}-%{version}/redhat-linux-build/subprojects -type f -nam
 # Fix RPATH
 find %{buildroot}%{_libdir} -type f -name '*.so*' -exec file '{}' \; | grep 'ELF' | awk -F: '{print $1}' | xargs -r chrpath --delete
 find %{buildroot}%{_bindir} -type f -exec file '{}' \; | grep 'ELF' | awk -F: '{print $1}' | xargs -r chrpath --delete
+
+# --- Web UI ---
+# Install the built application tree (the custom Express server requires the
+# 'next' runtime, so node_modules is shipped in full).
+install -d -m 0755 %{buildroot}%{webui_dir}
+cp -a webui/.next webui/server webui/src webui/static webui/pages \
+      webui/node_modules webui/package.json webui/package-lock.json \
+      webui/.babelrc %{buildroot}%{webui_dir}/
+
+# systemd unit
+cat > %{buildroot}%{_unitdir}/open5gs-webui.service <<EOF
+[Unit]
+Description=Open5GS Web UI
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=open5gs
+Group=open5gs
+WorkingDirectory=%{webui_dir}
+EnvironmentFile=%{_sysconfdir}/open5gs/webui.env
+EnvironmentFile=-%{_sysconfdir}/open5gs/webui.secret.env
+ExecStart=/usr/bin/node server/index.js
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# User-editable configuration (secrets live in webui.secret.env, generated on
+# first install by the %%post scriptlet).
+cat > %{buildroot}%{_sysconfdir}/open5gs/webui.env <<EOF
+# Open5GS Web UI configuration
+NODE_ENV=production
+# Address and port the Web UI listens on (0.0.0.0 = all interfaces)
+HOSTNAME=0.0.0.0
+PORT=9999
+# MongoDB subscriber database
+DB_URI=mongodb://127.0.0.1/open5gs
+EOF
 
 %check
 %meson_test --no-suite integration || true
@@ -424,6 +496,29 @@ if [ $1 -eq 0 ]; then
 fi
 %postun upf
 %systemd_postun_with_restart open5gs-upfd.service
+
+%post webui
+%systemd_post open5gs-webui.service
+if [ $1 -eq 1 ]; then
+    # Generate per-install secrets for Web UI session/JWT signing.
+    SECRET_FILE=%{_sysconfdir}/open5gs/webui.secret.env
+    if [ ! -f "$SECRET_FILE" ]; then
+        umask 077
+        {
+            echo "SECRET_KEY=$(openssl rand -hex 32)"
+            echo "JWT_SECRET_KEY=$(openssl rand -hex 32)"
+        } > "$SECRET_FILE"
+        chown root:open5gs "$SECRET_FILE" 2>/dev/null || :
+        chmod 0640 "$SECRET_FILE"
+    fi
+fi
+%preun webui
+%systemd_preun open5gs-webui.service
+%postun webui
+%systemd_postun_with_restart open5gs-webui.service
+if [ $1 -eq 0 ]; then
+    rm -f %{_sysconfdir}/open5gs/webui.secret.env
+fi
 
 %pre common
 getent group open5gs >/dev/null || groupadd -r open5gs
@@ -588,7 +683,25 @@ fi
 %config(noreplace) %{_sysctldir}/30-open5gs-upf.conf
 %{_unitdir}/open5gs-upfd.service
 
+%files webui
+%dir %{_datadir}/%{name}
+%{webui_dir}
+%{_unitdir}/open5gs-webui.service
+%config(noreplace) %{_sysconfdir}/open5gs/webui.env
+%ghost %{_sysconfdir}/open5gs/webui.secret.env
+
 %changelog
+* Tue Jul 28 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-22
+- packaging: add open5gs-webui sub-package. Builds the Next.js/Express Web UI
+  during rpmbuild (npm ci + npm run build; adds nodejs/npm BuildRequires) and
+  installs the app tree (including node_modules) to %{_datadir}/open5gs/webui.
+  Ships a systemd unit (open5gs-webui.service) running as the open5gs user,
+  user-editable config at /etc/open5gs/webui.env (PORT/DB_URI/HOSTNAME), and
+  per-install session/JWT secrets generated into webui.secret.env on first
+  install. Requires nodejs at runtime and a reachable MongoDB.
+- webui: ensure-secret.js now honours SECRET_KEY/JWT_SECRET_KEY supplied via
+  the environment and skips writing .env, so the app runs from a read-only
+  install prefix (backward compatible with the dev workflow).
 * Tue Jul 28 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-21
 - packaging: install open5gs-dbctl and ship it in the common sub-package;
   the misc/db meson build previously only ran configure_file on the script
