@@ -3,7 +3,7 @@
 
 # basesuffix identifies your packaging (always appended to Release).
 %global basesuffix .sslconsult
-%global releaseNum 20
+%global releaseNum 21
 
 Name:           open5gs
 Version:        2.7.7
@@ -453,6 +453,8 @@ fi
 %{_libdir}/libfd*.so*
 %{_libdir}/lib*prom*.so*
 %{_libdir}/freeDiameter/*.fdx
+# Database provisioning tool (shared by HSS/EPC and UDR/5GC deployments)
+%{_bindir}/open5gs-dbctl
 # Common config files
 %config(noreplace) %{_sysconfdir}/open5gs/tls/ca.crt
 %config(noreplace) %{_sysconfdir}/logrotate.d/open5gs
@@ -587,6 +589,13 @@ fi
 %{_unitdir}/open5gs-upfd.service
 
 %changelog
+* Tue Jul 28 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-21
+- packaging: install open5gs-dbctl and ship it in the common sub-package;
+  the misc/db meson build previously only ran configure_file on the script
+  without an install rule, so the database provisioning tool was never
+  packaged. Now installed to %{_bindir}/open5gs-dbctl (mode 0755) and owned
+  by open5gs-common so it is available to both EPC (HSS) and 5GC (UDR/UDM)
+  deployments. Note: requires the MongoDB shell (mongosh) at runtime.
 * Tue Jun 30 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-20
 - smf: fix build break in gsm-sm.c gtp_cause_from_diameter(); a duplicated
   OGS_DIAM_UNABLE_TO_DELIVER case had been left outside the inner

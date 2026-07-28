@@ -23,5 +23,8 @@ foreach file : misc_db
     configure_file(
             input : file,
             output : file,
-            configuration : conf_data)
+            configuration : conf_data,
+            install : true,
+            install_dir : get_option('bindir'),
+            install_mode : 'rwxr-xr-x')
 endforeach

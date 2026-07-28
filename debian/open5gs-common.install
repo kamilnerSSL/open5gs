@@ -1,3 +1,4 @@
+usr/bin/open5gs-dbctl
 usr/lib/*/libogs*.so*
 usr/lib/*/libfd*.so*
 usr/lib/*/freeDiameter/*.fdx
