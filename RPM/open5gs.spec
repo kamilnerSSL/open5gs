@@ -266,8 +266,17 @@ meson subprojects download
 # directly, so the network is available). node_modules is gitignored and thus
 # absent from the source tarball, so it is installed here.
 pushd webui
+# The old next@3/webpack toolchain occasionally fails the first build with a
+# transient "Cannot find module '../package.json'" out of webpack's Stats.
+# Retry once from a clean node_modules so a flaky npm install does not fail the
+# whole RPM build.
 npm ci
-npm run build
+npm run build || {
+    echo "webui build failed; retrying once with a clean node_modules"
+    rm -rf node_modules .next
+    npm ci
+    npm run build
+}
 popd
 
 %install
@@ -687,6 +696,9 @@ fi
   the dependency on the %post/openssl step and never writes to the read-only
   install prefix. Dropped the %ghost webui.secret.env and Requires(post):
   openssl accordingly.
+- packaging: retry the webui 'next build' once from a clean node_modules; the
+  old next@3/webpack toolchain intermittently fails the first build with a
+  transient module-resolution error.
 * Tue Jul 28 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-22
 - packaging: add open5gs-webui sub-package. Builds the Next.js/Express Web UI
   during rpmbuild (npm ci + npm run build; adds nodejs/npm BuildRequires) and
