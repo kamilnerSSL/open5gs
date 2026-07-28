@@ -2,7 +2,13 @@ const fs = require('fs');
 const crypto = require('crypto');
 const path = require('path');
 
-const envPath = path.join(__dirname, '../.env');
+// The secrets file location. Defaults to the app root for the dev workflow,
+// but a packaged install points this at a writable, service-owned directory
+// (e.g. /var/lib/open5gs/webui) via OPEN5GS_WEBUI_ENV_FILE, so the app never
+// writes into a read-only install prefix.
+const envPath = process.env.OPEN5GS_WEBUI_ENV_FILE
+    ? path.resolve(process.env.OPEN5GS_WEBUI_ENV_FILE)
+    : path.join(__dirname, '../.env');
 
 module.exports = function() {
     // List of keys we want to ensure exist
