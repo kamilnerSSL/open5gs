@@ -3,14 +3,19 @@
 
 # basesuffix identifies your packaging (always appended to Release).
 %global basesuffix .sslconsult
-%global releaseNum 2
+%global releaseNum 3
+
+# Experimental build marker. Appended to Release so that it also lands in the
+# package filename, making an experimental build obvious on sight and in any
+# repo listing. Comment this out for a normal, supported build.
+%global expsuffix .experimental
 
 # Install location for the (Node.js/Next.js) Web UI application tree.
 %global webui_dir %{_datadir}/%{name}/webui
 
 Name:           open5gs
 Version:        2.8.0
-Release:        %{releaseNum}%{basesuffix}%{?dist}
+Release:        %{releaseNum}%{?expsuffix}%{basesuffix}%{?dist}
 Summary:        Open Source Core Network for 5G
 
 License:        AGPL-3.0-or-later
@@ -688,6 +693,20 @@ fi
 %config(noreplace) %{_sysconfdir}/open5gs/webui.env
 
 %changelog
+* Tue Aug 18 2026 Keith Milner <kamilner@sslconsult.com> - 2.8.0-3.experimental
+- EXPERIMENTAL BUILD. Release now carries an .experimental marker, so it shows
+  up in the package filename and in repo listings. Do not ship this to
+  production without validating the change below on a live attach.
+- SMF: add 'smf.gtpc.peer_port', an opt-in destination port for SMF-initiated
+  GTP-C requests (Create Bearer, Update Bearer, Update PDP Context). Open5GS
+  addresses a peer on the source port its last message arrived from, which is
+  correct for a response but not for a request: 3GPP TS 29.274 requires a
+  request to be sent to the peer's GTP-C listening port. A peer that sends
+  session management from a socket other than 2123 therefore never sees our
+  requests, and dedicated bearer setup fails with "No Create Bearer Response".
+  Responses continue to use the learned source port, so peer-initiated
+  signalling is unaffected. Unset by default: no behaviour change unless the
+  option is configured.
 * Tue Aug 18 2026 Keith Milner <kamilner@sslconsult.com> - 2.8.0-2
 - SMF: handle the IM CN Subsystem Signaling Flag PCO (container ID 0x0002).
   It was missing from the known-ID list, so every IMS APN attach logged
