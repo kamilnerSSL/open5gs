@@ -3594,6 +3594,17 @@ int smf_pco_build(uint8_t *pco_buf, uint8_t *buffer, int length,
         case OGS_PCO_ID_MS_SUPPORTS_BCM:
             /* TODO */
             break;
+        case OGS_PCO_ID_IM_CN_SUBSYSTEM_SIGNALING_FLAG:
+            /*
+             * The UE requests that this PDN connection carries IMS signalling.
+             * The network confirms by echoing the container back with a
+             * zero-length value. See 3GPP TS 24.008, section 10.5.6.3.
+             */
+            smf.ids[smf.num_of_id].id = ue.ids[i].id;
+            smf.ids[smf.num_of_id].len = 0;
+            smf.ids[smf.num_of_id].data = 0;
+            smf.num_of_id++;
+            break;
         case OGS_PCO_ID_MS_SUPPORT_LOCAL_ADDR_TFT_INDICATOR:
             smf.ids[smf.num_of_id].id = ue.ids[i].id;
             smf.ids[smf.num_of_id].len = 0;
