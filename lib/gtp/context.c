@@ -253,6 +253,9 @@ int ogs_gtp_context_parse_config(const char *local, const char *remote)
 
                         } else if (!strcmp(gtpc_key, "client")) {
                             /* handle config in application */
+                        } else if (!strcmp(gtpc_key, "peer_port")) {
+                            const char *v = ogs_yaml_iter_value(&gtpc_iter);
+                            if (v) self.gtpc_peer_port = atoi(v);
                         } else
                             ogs_warn("unknown key `%s`", gtpc_key);
                     }

@@ -1044,6 +1044,66 @@ smf_gtp_node_t *smf_gtp_node_new(ogs_gtp_node_t *gnode)
     return smf_gnode;
 }
 
+/*
+ * Return the node to use as the destination of locally initiated GTP-C
+ * requests towards this peer.
+ *
+ * gnode is derived from the source address of a received message, so its
+ * port is whatever socket the peer happened to send from. That is the right
+ * destination for a response, but 3GPP TS 29.274 requires a request to be
+ * sent to the peer's GTP-C listening port. Where the two differ, resolve a
+ * separate node fixed at the configured port and leave gnode - and so every
+ * response - untouched.
+ *
+ * Keeping them separate also keeps transaction matching working: the peer
+ * answers our request from its listening port, and ogs_gtp_node_find_by_addr()
+ * compares ports, so the response must resolve to the same node the
+ * transaction was created on.
+ */
+ogs_gtp_node_t *smf_gtp_node_for_request(ogs_gtp_node_t *gnode)
+{
+    ogs_gtp_node_t *peer = NULL;
+    ogs_sockaddr_t addr;
+    uint16_t port = ogs_gtp_self()->gtpc_peer_port;
+    char buf[OGS_ADDRSTRLEN];
+
+    ogs_assert(gnode);
+
+    if (!port || OGS_PORT(&gnode->addr) == port)
+        return gnode;
+
+    memcpy(&addr, &gnode->addr, sizeof(addr));
+    addr.next = NULL;
+    addr.ogs_sin_port = htobe16(port);
+
+    peer = ogs_gtp_node_find_by_addr(&smf_self()->sgw_s5c_list, &addr);
+    if (peer)
+        return peer;
+
+    peer = ogs_gtp_node_add_by_addr(&smf_self()->sgw_s5c_list, &addr);
+    if (!peer) {
+        ogs_error("Failed to create request gnode(%s:%u), mempool full, "
+                "falling back to the learned port %u",
+                OGS_ADDR(&addr, buf), port, OGS_PORT(&gnode->addr));
+        return gnode;
+    }
+
+    peer->sock = gnode->sock;
+    if (!smf_gtp_node_new(peer)) {
+        ogs_error("smf_gtp_node_new() failed for %s:%u, falling back to "
+                "the learned port %u",
+                OGS_ADDR(&addr, buf), port, OGS_PORT(&gnode->addr));
+        ogs_gtp_node_remove(&smf_self()->sgw_s5c_list, peer);
+        return gnode;
+    }
+    smf_metrics_inst_global_inc(SMF_METR_GLOB_GAUGE_GTP_PEERS_ACTIVE);
+
+    ogs_info("Requests to peer [%s] will use GTP-C port %u (learned %u)",
+            OGS_ADDR(&addr, buf), port, OGS_PORT(&gnode->addr));
+
+    return peer;
+}
+
 void smf_gtp_node_free(smf_gtp_node_t *smf_gnode)
 {
     ogs_assert(smf_gnode);

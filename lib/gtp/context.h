@@ -32,6 +32,19 @@ typedef struct ogs_gtp_context_s {
     uint32_t        gtpc_port;      /* GTPC local port */
     uint32_t        gtpu_port;      /* GTPU local port */
 
+    /*
+     * Destination port for locally initiated GTP-C requests.
+     *
+     * By default a peer is addressed on the source port its last message
+     * arrived from, which is correct for responses but not for requests:
+     * 3GPP TS 29.274 requires a request to be sent to the peer's GTP-C
+     * listening port. Peers that send session management from a socket
+     * other than 2123 therefore never see our requests.
+     *
+     * 0 keeps the default (learned) behaviour.
+     */
+    uint32_t        gtpc_peer_port;
+
     ogs_list_t      gtpc_list;      /* GTPC IPv4 Server List */
     ogs_list_t      gtpc_list6;     /* GTPC IPv6 Server List */
     ogs_sock_t      *gtpc_sock;     /* GTPC IPv4 Socket */

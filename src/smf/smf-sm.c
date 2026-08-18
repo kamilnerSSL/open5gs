@@ -152,8 +152,11 @@ void smf_state_operational(ogs_fsm_t *s, smf_event_t *e)
             if (gtp2_message.h.teid == 0) {
                 ogs_expect(!sess);
                 sess = smf_sess_add_by_gtp2_message(&gtp2_message);
-                if (sess)
-                    OGS_SETUP_GTP_NODE(sess, smf_gnode->gnode);
+                if (sess) {
+                    ogs_gtp_node_t *req_gnode =
+                        smf_gtp_node_for_request(smf_gnode->gnode);
+                    OGS_SETUP_GTP_NODE(sess, req_gnode);
+                }
             }
             if (!sess) {
                 ogs_error("No Session");
@@ -296,8 +299,11 @@ void smf_state_operational(ogs_fsm_t *s, smf_event_t *e)
             if (gtp1_message.h.teid == 0) {
                 ogs_expect(!sess);
                 sess = smf_sess_add_by_gtp1_message(&gtp1_message);
-                if (sess)
-                    OGS_SETUP_GTP_NODE(sess, smf_gnode->gnode);
+                if (sess) {
+                    ogs_gtp_node_t *req_gnode =
+                        smf_gtp_node_for_request(smf_gnode->gnode);
+                    OGS_SETUP_GTP_NODE(sess, req_gnode);
+                }
             }
             if (!sess) {
                 ogs_gtp1_send_error_message(gtp_xact, 0,

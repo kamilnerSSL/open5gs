@@ -674,7 +674,9 @@ void smf_s5c_handle_modify_bearer_request(
         rv = ogs_gtp2_f_teid_to_ip(sgw_s5c_teid, &sess->sgw_s5c_ip);
         ogs_assert(rv == OGS_OK);
 
-        OGS_SETUP_GTP_NODE(sess, gtp_xact->gnode);
+        ogs_gtp_node_t *req_gnode =
+            smf_gtp_node_for_request(gtp_xact->gnode);
+        OGS_SETUP_GTP_NODE(sess, req_gnode);
 
         ogs_debug("    SGW_S5C_TEID[0x%x] SMF_N4_TEID[0x%x]",
                 sess->sgw_s5c_teid, sess->smf_n4_teid);
