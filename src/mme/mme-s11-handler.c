@@ -24,6 +24,7 @@
 
 #include "s1ap-path.h"
 #include "mme-gtp-path.h"
+#include "mme-dns.h"
 #include "nas-path.h"
 #include "mme-fd-path.h"
 #include "sgsap-path.h"
@@ -621,6 +622,10 @@ void mme_s11_handle_create_session_response(
     return;
 
 fail:
+    /* DNS-based selection: try the next PGW candidate before giving up */
+    if (mme_dns_retry_on_csr_failure(sess))
+        return;
+
     mme_s11_create_session_fail(enb_ue, mme_ue,
             create_action, fail_cause, fail_reason);
     return;
@@ -1057,7 +1062,18 @@ void mme_s11_handle_create_bearer_request(
     ogs_assert(sgw_ue);
 
     ogs_assert(sess);
+    ogs_info("[EBI-TRACK] Create Bearer Request: IMSI[%s] bitmap[0x%04x]",
+            mme_ue->imsi_bcd, mme_ue->ebi_bitmap);
     bearer = mme_bearer_add(sess);
+    if (!bearer) {
+        /* mme_ebi_alloc() has already emitted the full [EBI-TRACK]
+         * ALLOC-FAIL dump.  Keep the assert so the crash still stops
+         * the process with the dump captured right above it. */
+        ogs_error("[EBI-TRACK] CREATE-BEARER-REQUEST FAILED: "
+                "EBI pool exhausted, aborting (see dump above) "
+                "IMSI[%s] SGW_S11_TEID[%u]",
+                mme_ue->imsi_bcd, sgw_ue->sgw_s11_teid);
+    }
     ogs_assert(bearer);
 
     ogs_debug("    MME_S11_TEID[%d] SGW_S11_TEID[%d]",
@@ -1100,6 +1116,15 @@ void mme_s11_handle_create_bearer_request(
                 &bearer_qos, &req->bearer_contexts.bearer_level_qos) !=
             req->bearer_contexts.bearer_level_qos.len) {
         ogs_error("ogs_gtp2_parse_bearer_qos() failed");
+        ogs_gtp2_send_error_message(xact, sgw_ue->sgw_s11_teid,
+                OGS_GTP2_CREATE_BEARER_RESPONSE_TYPE,
+                OGS_GTP2_CAUSE_MANDATORY_IE_INCORRECT);
+        /*
+         * The bearer context has just been created for this request.
+         * Remove it here; otherwise its EPS bearer identity is held
+         * until the UE context is released.
+         */
+        mme_bearer_remove(bearer);
         return;
     }
     bearer->qos.index = bearer_qos.qci;
@@ -1644,14 +1669,18 @@ void mme_s11_handle_release_access_bearers_response(
                 /* All ENB_UE context
                  * where PartOfS1_interface was requested
                  * REMOVED */
-                ogs_assert(enb->s1_reset_ack);
-                r = s1ap_send_to_enb(
-                        enb, enb->s1_reset_ack, S1AP_NON_UE_SIGNALLING);
-                ogs_expect(r == OGS_OK);
-                ogs_assert(r != OGS_ERROR);
+                if (enb->s1_reset_ack) {
+                    r = s1ap_send_to_enb(
+                            enb, enb->s1_reset_ack, S1AP_NON_UE_SIGNALLING);
+                    ogs_expect(r == OGS_OK);
+                    ogs_assert(r != OGS_ERROR);
 
-                /* Clear S1-Reset Ack Buffer */
-                enb->s1_reset_ack = NULL;
+                    /* Clear S1-Reset Ack Buffer */
+                    enb->s1_reset_ack = NULL;
+                } else {
+                    ogs_error("No S1-Reset Ack buffer [eNB-ID:%llu]",
+                            (unsigned long long)enb->id);
+                }
             }
         } else {
             ogs_error("ENB-S1 Context has already been removed");
