@@ -3,7 +3,7 @@
 
 # basesuffix identifies your packaging (always appended to Release).
 %global basesuffix .sslconsult
-%global releaseNum 1
+%global releaseNum 2
 
 # Install location for the (Node.js/Next.js) Web UI application tree.
 %global webui_dir %{_datadir}/%{name}/webui
@@ -688,6 +688,13 @@ fi
 %config(noreplace) %{_sysconfdir}/open5gs/webui.env
 
 %changelog
+* Tue Aug 18 2026 Keith Milner <kamilner@sslconsult.com> - 2.8.0-2
+- SMF: handle the IM CN Subsystem Signaling Flag PCO (container ID 0x0002).
+  It was missing from the known-ID list, so every IMS APN attach logged
+  "Unknown PCO ID:(0x2)" and the container was dropped from the response.
+  Per 3GPP TS 24.008 section 10.5.6.3 the network confirms the PDN
+  connection carries IMS signalling by echoing the container back with a
+  zero-length value, which the SMF now does.
 * Tue Aug 18 2026 Keith Milner <kamilner@sslconsult.com> - 2.8.0-1
 - Rebase onto upstream v2.8.0 (open5gs/open5gs @ ee596937d); reset releaseNum
   to 1 for the new upstream version. Brings in the upstream hardening sweep:
