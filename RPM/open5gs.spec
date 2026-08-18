@@ -3,13 +3,13 @@
 
 # basesuffix identifies your packaging (always appended to Release).
 %global basesuffix .sslconsult
-%global releaseNum 23
+%global releaseNum 1
 
 # Install location for the (Node.js/Next.js) Web UI application tree.
 %global webui_dir %{_datadir}/%{name}/webui
 
 Name:           open5gs
-Version:        2.7.7
+Version:        2.8.0
 Release:        %{releaseNum}%{basesuffix}%{?dist}
 Summary:        Open Source Core Network for 5G
 
@@ -40,6 +40,7 @@ BuildRequires:  pkgconfig(libnghttp2)
 BuildRequires:  pkgconfig(talloc)
 BuildRequires:  pkgconfig(libtins)
 BuildRequires:  pkgconfig(usrsctp)
+BuildRequires:  pkgconfig(libcares)
 BuildRequires:  chrpath
 # Web UI (Next.js/Express) build toolchain
 BuildRequires:  nodejs
@@ -687,6 +688,19 @@ fi
 %config(noreplace) %{_sysconfdir}/open5gs/webui.env
 
 %changelog
+* Tue Aug 18 2026 Keith Milner <kamilner@sslconsult.com> - 2.8.0-1
+- Rebase onto upstream v2.8.0 (open5gs/open5gs @ ee596937d); reset releaseNum
+  to 1 for the new upstream version. Brings in the upstream hardening sweep:
+  TLV bounds validation, PFCP IE bounds checks, NAS QoS rule validation,
+  UE-context corruption fixes on identity mismatch and replayed uplink NAS
+  COUNT rejection.
+- Diameter Session-Id lifetime is now owned by the SMF session context
+  (sess->gx_sid/gy_sid/s6b_sid are duplicated and freed in smf_sess_remove),
+  fixing a use-after-free on concurrent Gx state access.
+- packaging: add pkgconfig(libcares) BuildRequires to enable the new
+  DNS-based SGW/PGW selection in the MME (3GPP TS 29.303 S-NAPTR). The
+  dependency is optional upstream, so without it the feature would be
+  silently compiled out of the package.
 * Tue Jul 28 2026 Keith Milner <kamilner@sslconsult.com> - 2.7.7-23
 - webui: fix open5gs-webui.service crash on start (EACCES writing
   /usr/share/open5gs/webui/.env). Secrets are no longer generated in %post
